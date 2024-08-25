@@ -1,0 +1,32 @@
+{
+  "name": "vessel3d",
+  "version": "0.0.1",
+  "description": "Library for conceptual ship visualization using as support Three.js library",
+  "main": "vessel3D.js",
+  "scripts": {
+    "build": "rollup -c utils/build/rollup.config.js --bundleConfigAsCjs",
+    "test": "npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiplab/vessel3D.git"
+  },
+  "keywords": [
+    "ship",
+    "design",
+    "vessel",
+    "maritime",
+    "naval"
+  ],
+  "author": "ferrari212",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/shiplab/vessel3D/issues"
+  },
+  "homepage": "https://github.com/shiplab/vessel3D#readme",
+  "dependencies": {
+    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.21.0"
+  }
+}

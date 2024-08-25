@@ -74,7 +74,6 @@ export class Scene extends THREE.Scene {
         // Disable orbit controls when dragging
         this.dragControls.addEventListener('dragstart', function () {
             orbitControls.enabled = false;
-            // console.log(orbitControls);
             
         });
 
