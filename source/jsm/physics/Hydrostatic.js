@@ -2,7 +2,7 @@ import { simpsonIntegratorDiscrete, trapezoidalIntegratorCoefficients } from "..
 import { lerp, bisectionSearch } from "../math/interpolation.js"
 import { geometricCenter } from "../math/arrayOperations.js"
 
-export default class HullHydrostatics {
+export class HullHydrostatics {
 
     constructor(hull) {
 

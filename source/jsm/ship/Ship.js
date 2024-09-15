@@ -3,7 +3,7 @@ import { getRandomColor } from "../math/randomFunctions.js"
 import { Compartments } from "./Compartments.js";
 import { Hull } from "./Hull.js"
 
-import HullHydrostatics from "../physics/Hydrostatic.js"
+import { HullHydrostatics } from "../physics/Hydrostatic.js"
 
 import * as THREE from "../../libs/three.js"
 

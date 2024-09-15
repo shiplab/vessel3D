@@ -1,5 +1,50 @@
 const REVISION$1 = "v0.0.1-alpha";
 
+function bisectionSearch( array, value ) {
+
+	if ( value < array[ 0 ] ) {
+
+		console.warn( "bisectionSearch: requested value below lowest array element. Returning undefined." );
+		return { index: undefined, mu: undefined };
+
+	}
+
+	let index = 0, upper = array.length;
+	while ( upper > index + 1 ) {
+
+		let c = Math.floor( 0.5 * ( index + upper ) );
+		if ( array[ c ] === value ) return { index: c, mu: 0 };
+		else if ( array[ c ] < value ) index = c;
+		else upper = c;
+
+	}
+
+	/*if (index === array.length) {
+		console.error("bisectionSearch: index===array.length. This should never happen.");
+	}*/
+	let mu = ( value - array[ index ] ) / ( array[ index + 1 ] - array[ index ] );
+	if ( index === array.length - 1 ) {
+
+		console.warn( "bisectionSearch: Reached end of array. Simple interpolation will result in NaN." );
+		mu = undefined;
+
+	}
+
+	return { index, mu };
+
+}
+
+//linear interpolation
+//Defaults are not finally decided
+//returns NaN if a and b are NaN or mu is NaN.
+function lerp( a, b, mu = 0.5 ) {
+
+	if ( isNaN( a ) ) return b;
+	if ( isNaN( b ) ) return a;
+	return ( 1 - mu ) * a + mu * b;
+
+}
+
 // threejs.org/license
 const REVISION = '126';
 const MOUSE = { LEFT: 0, MIDDLE: 1, RIGHT: 2, ROTATE: 0, DOLLY: 1, PAN: 2 };
@@ -41915,51 +41960,6 @@ class Compartments extends Mesh {
 
 }
 
-function bisectionSearch( array, value ) {
-
-	if ( value < array[ 0 ] ) {
-
-		console.warn( "bisectionSearch: requested value below lowest array element. Returning undefined." );
-		return { index: undefined, mu: undefined };
-
-	}
-
-	let index = 0, upper = array.length;
-	while ( upper > index + 1 ) {
-
-		let c = Math.floor( 0.5 * ( index + upper ) );
-		if ( array[ c ] === value ) return { index: c, mu: 0 };
-		else if ( array[ c ] < value ) index = c;
-		else upper = c;
-
-	}
-
-	/*if (index === array.length) {
-		console.error("bisectionSearch: index===array.length. This should never happen.");
-	}*/
-	let mu = ( value - array[ index ] ) / ( array[ index + 1 ] - array[ index ] );
-	if ( index === array.length - 1 ) {
-
-		console.warn( "bisectionSearch: Reached end of array. Simple interpolation will result in NaN." );
-		mu = undefined;
-
-	}
-
-	return { index, mu };
-
-}
-
-//linear interpolation
-//Defaults are not finally decided
-//returns NaN if a and b are NaN or mu is NaN.
-function lerp( a, b, mu = 0.5 ) {
-
-	if ( isNaN( a ) ) return b;
-	if ( isNaN( b ) ) return a;
-	return ( 1 - mu ) * a + mu * b;
-
-}
-
 class Hull extends Group {
 
     // -----------------> Data Structure <--------------------- //
@@ -41996,43 +41996,45 @@ class Hull extends Group {
 
             const halfBreadths = this.wigley_formula();
 
-            hull.halfBreadths = {        
+            this.halfBreadths = {        
                 "waterlines": halfBreadths.waterlines,
                 "stations": halfBreadths.stations,
                 "table": halfBreadths.table,
             };
 
-            hull.attributes = {
-                "LOA": 22.5,
+            this.attributes = {
+                "LOA": 20,
                 "BOA": 10,
-                "Depth": 2.5,
+                "Depth": 4,
                 "APP": 0
             };
-            hull.style = {
+            this.style = {
 				"upperColor": "yellow",
 				"lowerColor": "green",
 				"opacity": 0.5
 			};
 
-        }
+        } else {
+			
+			Object.assign(this, hull);
 
-        this.hull = hull;
+		}
+		
+		this.bulkheads = undefined;
         this.group = "Hull3D";
 		this.name = "Hull3D";
-		this.design_draft = design_draft !== undefined ? design_draft : 0.5 * hull.attributes.Depth;
-		this.upperColor = typeof hull.style.upperColor !== "undefined" ? hull.style.upperColor : 0x33aa33;
-		this.lowerColor = typeof hull.style.lowerColor !== "undefined" ? hull.style.lowerColor : 0xaa3333;
-		this.opacity = typeof hull.style.opacity !== "undefined" ? hull.style.opacity : 0.5;
+		this.design_draft = design_draft !== undefined ? design_draft : 0.5 * this.attributes.Depth;
+		this.upperColor = typeof this.style.upperColor !== "undefined" ? this.style.upperColor : 0x33aa33;
+		this.lowerColor = typeof this.style.lowerColor !== "undefined" ? this.style.lowerColor : 0xaa3333;
+		this.opacity = typeof this.style.opacity !== "undefined" ? this.style.opacity : 0.5;
 
-		this.update();
-
-        
+		this.update();        
         
     }
 
     addStation( p ) {
 
-		const hb = this.hull.halfBreadths;
+		const hb = this.halfBreadths;
 		const { index, mu } = bisectionSearch( hb.stations, p );
 		hb.stations.splice( index, 0, p );
 		for ( let i = 0; i < hb.waterlines.length; i ++ ) {
@@ -42047,7 +42049,7 @@ class Hull extends Group {
 
 	addWaterline( p ) {
 
-		const hb = this.hull.halfBreadths;
+		const hb = this.halfBreadths;
 		const { index, mu } = bisectionSearch( hb.waterlines, p );
 		hb.waterlines.splice( index, 0, p );
 		hb.table.splice( index, 0, new Array( hb.stations.length ).fill( 0 ) );
@@ -42057,11 +42059,11 @@ class Hull extends Group {
 	}
 
     getWaterline( z ) {
-        let ha = this.hull.attributes;
+        let ha = this.attributes;
 		let zr = z / ha.Depth; //using zr requires fewer operations and less memory than a scaled copy of wls.
-		let wls = this.hull.halfBreadths.waterlines;//.map(wl=>wl*ha.Depth);
-		let sts = this.hull.halfBreadths.stations;
-		let tab = this.hull.halfBreadths.table;
+		let wls = this.halfBreadths.waterlines;//.map(wl=>wl*ha.Depth);
+		let sts = this.halfBreadths.stations;
+		let tab = this.halfBreadths.table;
 
 		if ( zr < wls[ 0 ] ) {
 
@@ -42188,11 +42190,11 @@ class Hull extends Group {
     //This must be debugged more. getWaterline got an overhaul, but this did not.
 	getStation( x ) {
 
-		let ha = this.hull.attributes;
+		let ha = this.attributes;
 		let xr = x / ha.LOA;
-		let sts = this.hull.halfBreadths.stations;
-		let wls = this.hull.halfBreadths.waterlines;
-		let tab = this.hull.halfBreadths.table;
+		let sts = this.halfBreadths.stations;
+		let wls = this.halfBreadths.waterlines;
+		let tab = this.halfBreadths.table;
 
 		let { index: a, mu: mu } = bisectionSearch( sts, xr );
 
@@ -42221,7 +42223,7 @@ class Hull extends Group {
 
 		}
 
-		for ( let j = 0; j < this.hull.halfBreadths.waterlines.length; j ++ ) {
+		for ( let j = 0; j < this.halfBreadths.waterlines.length; j ++ ) {
 
 			st[ j ] *= 0.5 * ha.BOA;
 			if ( isNaN( st[ j ] ) || st[ j ] === null ) st[ j ] = null;
@@ -42235,20 +42237,9 @@ class Hull extends Group {
 
     update() {
 
-        const hull = this.hull;
-        const upperColor = this.upperColor;
-        const lowerColor = this.lowerColor;
-        this.design_draft;
-        const opacity = this.opacity;
+        const { upperColor, lowerColor, design_draft, opacity } = this;
 
-        let LOA = hull.attributes.LOA;
-        let BOA = hull.attributes.BOA;
-        let Depth = hull.attributes.Depth;
-
-        //None of these are changed during correction of the geometry.
-        let stations = hull.halfBreadths.stations;
-        let waterlines = hull.halfBreadths.waterlines;
-        let table = hull.halfBreadths.table;
+		const { attributes: { LOA, BOA, Depth }, halfBreadths: { stations, waterlines, table } } = this;
 
         if ( this.hGeom ) this.hGeom.dispose();
         this.hGeom = new HullSideGeometry( stations, waterlines, table );
@@ -42344,8 +42335,10 @@ class Hull extends Group {
 
         if ( this.port ) this.remove( this.port );
         this.port = new Mesh( this.hGeom, this.hMat );
+		this.port.name = "HullPortSide";
         if ( this.starboard ) this.remove( this.starboard );
         this.starboard = new Mesh( this.hGeom, this.hMat );
+		this.starboard.name = "HullStarboardSide";
         this.starboard.scale.y = - 1;
         this.add( this.port, this.starboard );
 
@@ -42362,6 +42355,28 @@ class Hull extends Group {
         this.scale.set( LOA, 0.5 * BOA, Depth );
 
     }
+
+	addBulkheads(att, x, th, d) {
+
+		if (this.bulkheads == undefined) {
+
+			let BOA = att.BOA;
+			let Depth = att.Depth;
+
+			this.bulkheads =  new Group();
+			this.bulkheads.scale.set( 1, 0.5 * BOA, Depth );
+
+		}		
+
+        this.bhGeom = new BoxGeometry( 1, 1, 1 );
+        this.bhGeom.translate( 0, 0, 0.5 );
+        
+		new MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: DoubleSide } );
+        bhGeom.translate( 0.5, 0, 0 );
+        
+		ship.structure.bulkheads;
+
+	}
 
     wigley_formula() {
         /*
@@ -42479,6 +42494,7 @@ class HullSideGeometry extends PlaneGeometry {
 
 		//Get rid of nulls by merging their points with the closest non-null point in the same station:
 		/*I am joining some uvs too. Then an applied texture will be cropped, not distorted, where the hull is cropped.*/
+		// TODO: Instead of getting the closest, makes it find and approximation for the tip of the vessel
 		let uv = this.getAttribute( "uv" );
 		let uva = uv.array;
 		//Iterate over stations
@@ -42570,6 +42586,271 @@ class HullSideGeometry extends PlaneGeometry {
 
 }
 
+function sumArray(array) {
+
+    return array.reduce((accumulator, currentValue) => accumulator + currentValue )
+
+} 
+
+function geometricCenter(array, x) {
+
+    const SUM = sumArray(array);
+
+    return array.reduce((accumulator, currentValue, index) => accumulator + currentValue * x[index], 0) / SUM
+
+}
+
+function trapezoidalIntegratorCoefficients(x, y) {
+    
+    // From table 4.1 Birian
+    // Different from the example on Birian, the half breadth is already scaled
+    const N = x.length;
+
+    if (N < 2) {
+        throw new Error("At least two data points are required.");
+    }
+
+    let h = x[1] - x[0]; // Assuming equally spaced points
+
+    let multiplier = Array( N ).fill( 1.0 );
+    multiplier[0] = multiplier[N - 1] = 0.5; 
+
+    // Create the storage of coefficients
+    let func_areas = [], func_moments = [], fm_long = [], fm_trans = [];
+
+    for (let i = 0; i < N - 1; i++) {
+        
+        const fa = multiplier[i] * y[i];
+        const fm = fa * x[i];
+        const fm_l = fm * x[i];
+        const fm_t = multiplier[i] * y[i] * y[i] * y[i];
+
+        func_areas.push(fa);
+        func_moments.push(fm);
+        fm_long.push(fm_l);
+        fm_trans.push(fm_t);
+
+    }
+
+    
+    const func_of_areas = sumArray(func_areas);
+    const func_of_moments = sumArray(func_moments);
+    const func_of_ix = sumArray(fm_long);
+    const func_of_it = sumArray(fm_trans);
+
+    const AWL = 2 * h * func_of_areas;
+    const LCF = func_of_moments / func_of_areas;
+    const IT = (2 / 3) * func_of_it * h;
+    const Iy = 2 * func_of_ix * h;
+    const IL = Iy - Math.pow(LCF, 2) * AWL;
+    
+    return {
+        "AWL": AWL,
+        "LCF": LCF,
+        "IT": IT,
+        "Iy": Iy,
+        "IL": IL,
+    };
+}
+
+function simpsonIntegratorDiscrete(x, y) {
+    // Equivalent from the Composite Simpson's rule for irregularly spaced data 
+    // "https://en.wikipedia.org/wiki/Simpson's_rule" for python
+
+    const n = x.length - 1;
+
+    if (n < 1) {
+        throw new Error("At least two data points are required.");
+    }
+
+    if (n != y.length - 1) {
+        throw new Error("x and y must be from the same size");
+    }
+
+    if (n === 1) {
+        // If there's only one interval, just use the trapezoidal rule
+        const h = x[1] - x[0];
+        return h * (y[0] + y[1]) / 2;
+    }
+
+     // Calculate h as the difference between consecutive x values
+     let h = [];
+     for (let i = 0; i < n; i++) {
+         h.push(x[i + 1] - x[i]);
+     }
+ 
+     let result = 0.0;
+ 
+     for (let i = 1; i < n; i += 2) {
+        let h0 = h[i - 1];
+        let h1 = h[i];
+    
+         // Skip intervals where the difference is zero
+        if (h0 === 0.0 || h1 === 0.0) {
+            continue;
+        }
+
+        let hph = h1 + h0; 
+        let hdh = h1 / h0;
+        let hmh = h1 * h0;
+
+        result += (hph / 6) * (
+            (2 - hdh) * y[i - 1] +
+            (hph ** 2 / hmh) * y[i] +
+            (2 - 1 / hdh) * y[i + 1]
+        );
+     }
+ 
+     if (n % 2 === 1) {
+         let h0 = h[n - 2];
+         let h1 = h[n - 1];
+ 
+         // Skip the last interval if any difference is zero
+        if (h0 !== 0 && h1 !== 0) {
+            result += y[n] * (2 * h1 ** 2 + 3 * h0 * h1) / (6 * (h0 + h1));
+            result += y[n - 1] * (h1 ** 2 + 3 * h1 * h0) / (6 * h0);
+            result -= y[n - 2] * h1 ** 3 / (6 * h0 * (h0 + h1));
+        }
+     }
+ 
+     return result;
+
+}
+
+class HullHydrostatics {
+
+    constructor(hull) {
+
+        const h = hull.design_draft / hull.attributes.Depth;
+
+
+        const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(hull, h); 
+        
+        
+        const { volume,
+                disp,
+                KB,
+                LCB, 
+                AWL,
+                LCF, 
+                IT,
+                Iy,
+                IL,
+                TPC } = this.computeHydrostatics(x, z, submerged_table, waterline_row);
+
+        // Assigning computed hydrostatic values to the instance
+        this.volume = volume;
+        this.displacement = disp;
+        this.KB = KB;
+        this.LCB = LCB;
+        this.AWL = AWL;
+        this.LCF = LCF;
+        this.IT = IT;
+        this.Iy = Iy;
+        this.IL = IL;
+        this.TPC = TPC;
+        
+    }
+
+    interpolateWaterline(hull, h = 1) {
+
+        // Get the hull geometry's port side surface
+        const sideSurface = hull.getObjectByName("HullPortSide");
+        const geometry = sideSurface.geometry;
+        
+        // Extract the geometry tables and hull dimensions
+        const tables = geometry.table;
+        const LOA = hull.attributes.LOA;  // Length Overall
+        const Depth = hull.attributes.Depth;  // Depth
+        const BOA = hull.attributes.Depth; // BOAl
+        
+        // Compute the station positions scaled by LOA (Length Overall)
+        const stationPositions = geometry.stations.map((station) => station * LOA);
+        
+        // Find the index and interpolation factor 'mu' for waterline height 'h'
+        const { index, mu } = bisectionSearch(geometry.waterlines, h);
+        
+        // Get waterlines up to the found index, scaled by the hull's Depth
+        const scaledWaterlines = geometry.waterlines.slice(0, index).map((waterline) => waterline * Depth);
+        
+        // Slice the corresponding part of the tables up to the scaled waterlines
+        const slicedTables = tables.slice(0, scaledWaterlines.length).map((row) => {
+
+            return row.map(value => value * BOA);
+
+        });
+        
+        // Identify the last and the next lines in the table for interpolation
+        const lastTableLine = slicedTables[slicedTables.length - 1];
+        const nextTableLine = tables[scaledWaterlines.length].map(value => value * BOA);
+        
+        // Interpolate the values between the last and next table lines
+        const interpolatedWaterlineRow = lastTableLine.map((value, i) => {
+
+            return lerp(nextTableLine[i], value, mu);
+        
+        });
+        
+        // Append the hull's design draft to the scaled waterlines
+        scaledWaterlines.push(hull.design_draft);
+        
+        // Add the interpolated waterline row to the sliced table
+        slicedTables.push(interpolatedWaterlineRow);
+        
+        return {
+            "x": stationPositions,
+            "z": scaledWaterlines,
+            "submerged_table": slicedTables,
+            "waterline_row": interpolatedWaterlineRow
+        };
+
+    }
+
+    computeHydrostatics(x, z, submerged_table, waterline_row) {
+
+        // Cross-section areas
+        const cs_area = submerged_table[0].map( (_, i) => {
+            
+            const yi = submerged_table.map(row => row[i]);
+            
+            return 2 * simpsonIntegratorDiscrete(z, yi);
+
+        });
+        
+        // Waterline areas
+        const wl_area = submerged_table.map( row => {
+            
+            return 2 * simpsonIntegratorDiscrete(x, row);
+            
+        });
+
+        const volume = simpsonIntegratorDiscrete(z, wl_area);
+        const disp = 1025 * volume * 9.81;
+
+        const KB = geometricCenter(wl_area, z);
+        const LCB = geometricCenter(cs_area, x);
+        
+        const { AWL, LCF, IT, Iy, IL } = trapezoidalIntegratorCoefficients(x, waterline_row);
+        
+        const TPC = AWL * 1.025 / 100;
+
+        return {
+            "volume": volume,
+            "disp": disp,
+            "KB": KB,
+            "LCB": LCB, 
+            "AWL": AWL,
+            "LCF": LCF, 
+            "IT": IT,
+            "Iy": Iy,
+            "IL": IL,
+            "TPC": TPC
+        }
+
+    }
+
+}
+
 class Ship {
 
     constructor( specification ) {
@@ -42589,6 +42870,36 @@ class Ship {
         this.hull = new Hull(hull, design_draft);
         this.scene.addToScene(this.hull);
 
+    }
+
+    initializeHydrostatics () {
+
+        if ( !this.hull ) throw new Error( 'Hydrostatics only available after the hul definition. Use addHull method' );
+
+        this.HullHydrostatics = new HullHydrostatics(this.hull);
+
+    }
+
+    addBulkhead (xpos_aft, thickness, density) {
+
+        try {
+            
+            if (this.hull === undefined) {
+                
+                // Throw an error if "hull" is not defined
+                throw new Error("The key 'hull' is not defined in the object. Use the addHull function to insert a hull first");
+
+            }
+
+        } catch (error) {
+
+            // Throw an error if "hull" is not defined
+            throw new Error("The key 'hull' is not defined in the object.");
+            
+        }
+
+        this.hull.addBulkheads(this.hull.attributes, xpos_aft, thickness, density);
+        
     }
 
     addCompartments({
@@ -42629,6 +42940,10 @@ class Ship {
 
 }
 
+const math = {
+	bisectionSearch,
+};
+
 if ( typeof window !== "undefined" ) {
 
 	if ( window.__VESSEL__ ) {
@@ -42643,4 +42958,4 @@ if ( typeof window !== "undefined" ) {
 
 }
 
-export { Scene, Ship };
+export { Scene, Ship, math };
