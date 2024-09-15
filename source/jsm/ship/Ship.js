@@ -3,6 +3,8 @@ import { getRandomColor } from "../math/randomFunctions.js"
 import { Compartments } from "./Compartments.js";
 import { Hull } from "./Hull.js"
 
+import HullHydrostatics from "../physics/Hydrostatic.js"
+
 import * as THREE from "../../libs/three.js"
 
 export class Ship {
@@ -24,6 +26,36 @@ export class Ship {
         this.hull = new Hull(hull, design_draft)
         this.scene.addToScene(this.hull)
 
+    }
+
+    initializeHydrostatics () {
+
+        if ( !this.hull ) throw new Error( 'Hydrostatics only available after the hul definition. Use addHull method' );
+
+        this.HullHydrostatics = new HullHydrostatics(this.hull)
+
+    }
+
+    addBulkhead (xpos_aft, thickness, density) {
+
+        try {
+            
+            if (this.hull === undefined) {
+                
+                // Throw an error if "hull" is not defined
+                throw new Error("The key 'hull' is not defined in the object. Use the addHull function to insert a hull first");
+
+            }
+
+        } catch (error) {
+
+            // Throw an error if "hull" is not defined
+            throw new Error("The key 'hull' is not defined in the object.");
+            
+        }
+
+        this.hull.addBulkheads(this.hull.attributes, xpos_aft, thickness, density)
+        
     }
 
     addCompartments({

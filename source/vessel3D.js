@@ -1,10 +1,10 @@
 import { REVISION } from "./constants.js";
 
-// export const f = {
-// 	linearFromArrays,
-// 	bilinear,
-// 	bisectionSearch
-// };
+import { bisectionSearch } from "./jsm/math/interpolation.js";
+
+export const math = {
+	bisectionSearch,
+};
 
 export { Scene } from "./jsm/engine/Scene.js";
 export { Ship } from "./jsm/ship/Ship.js"

@@ -39,43 +39,45 @@ export class Hull extends THREE.Group {
 
             const halfBreadths = this.wigley_formula()
 
-            hull.halfBreadths = {        
+            this.halfBreadths = {        
                 "waterlines": halfBreadths.waterlines,
                 "stations": halfBreadths.stations,
                 "table": halfBreadths.table,
             }
 
-            hull.attributes = {
-                "LOA": 22.5,
+            this.attributes = {
+                "LOA": 20,
                 "BOA": 10,
-                "Depth": 2.5,
+                "Depth": 4,
                 "APP": 0
             }
-            hull.style = {
+            this.style = {
 				"upperColor": "yellow",
 				"lowerColor": "green",
 				"opacity": 0.5
 			}
 
-        }
+        } else {
+			
+			Object.assign(this, hull)
 
-        this.hull = hull;
+		}
+		
+		this.bulkheads = undefined
         this.group = "Hull3D";
 		this.name = "Hull3D";
-		this.design_draft = design_draft !== undefined ? design_draft : 0.5 * hull.attributes.Depth;
-		this.upperColor = typeof hull.style.upperColor !== "undefined" ? hull.style.upperColor : 0x33aa33;
-		this.lowerColor = typeof hull.style.lowerColor !== "undefined" ? hull.style.lowerColor : 0xaa3333;
-		this.opacity = typeof hull.style.opacity !== "undefined" ? hull.style.opacity : 0.5;
+		this.design_draft = design_draft !== undefined ? design_draft : 0.5 * this.attributes.Depth;
+		this.upperColor = typeof this.style.upperColor !== "undefined" ? this.style.upperColor : 0x33aa33;
+		this.lowerColor = typeof this.style.lowerColor !== "undefined" ? this.style.lowerColor : 0xaa3333;
+		this.opacity = typeof this.style.opacity !== "undefined" ? this.style.opacity : 0.5;
 
-		this.update();
-
-        
+		this.update();        
         
     }
 
     addStation( p ) {
 
-		const hb = this.hull.halfBreadths;
+		const hb = this.halfBreadths;
 		const { index, mu } = bisectionSearch( hb.stations, p );
 		hb.stations.splice( index, 0, p );
 		for ( let i = 0; i < hb.waterlines.length; i ++ ) {
@@ -90,7 +92,7 @@ export class Hull extends THREE.Group {
 
 	addWaterline( p ) {
 
-		const hb = this.hull.halfBreadths;
+		const hb = this.halfBreadths;
 		const { index, mu } = bisectionSearch( hb.waterlines, p );
 		hb.waterlines.splice( index, 0, p );
 		hb.table.splice( index, 0, new Array( hb.stations.length ).fill( 0 ) );
@@ -100,11 +102,11 @@ export class Hull extends THREE.Group {
 	}
 
     getWaterline( z ) {
-        let ha = this.hull.attributes;
+        let ha = this.attributes;
 		let zr = z / ha.Depth; //using zr requires fewer operations and less memory than a scaled copy of wls.
-		let wls = this.hull.halfBreadths.waterlines;//.map(wl=>wl*ha.Depth);
-		let sts = this.hull.halfBreadths.stations;
-		let tab = this.hull.halfBreadths.table;
+		let wls = this.halfBreadths.waterlines;//.map(wl=>wl*ha.Depth);
+		let sts = this.halfBreadths.stations;
+		let tab = this.halfBreadths.table;
 
 		if ( zr < wls[ 0 ] ) {
 
@@ -231,11 +233,11 @@ export class Hull extends THREE.Group {
     //This must be debugged more. getWaterline got an overhaul, but this did not.
 	getStation( x ) {
 
-		let ha = this.hull.attributes;
+		let ha = this.attributes;
 		let xr = x / ha.LOA;
-		let sts = this.hull.halfBreadths.stations;
-		let wls = this.hull.halfBreadths.waterlines;
-		let tab = this.hull.halfBreadths.table;
+		let sts = this.halfBreadths.stations;
+		let wls = this.halfBreadths.waterlines;
+		let tab = this.halfBreadths.table;
 
 		let { index: a, mu: mu } = bisectionSearch( sts, xr );
 
@@ -264,7 +266,7 @@ export class Hull extends THREE.Group {
 
 		}
 
-		for ( let j = 0; j < this.hull.halfBreadths.waterlines.length; j ++ ) {
+		for ( let j = 0; j < this.halfBreadths.waterlines.length; j ++ ) {
 
 			st[ j ] *= 0.5 * ha.BOA;
 			if ( isNaN( st[ j ] ) || st[ j ] === null ) st[ j ] = null;
@@ -278,20 +280,9 @@ export class Hull extends THREE.Group {
 
     update() {
 
-        const hull = this.hull;
-        const upperColor = this.upperColor;
-        const lowerColor = this.lowerColor;
-        const design_draft = this.design_draft;
-        const opacity = this.opacity;
+        const { upperColor, lowerColor, design_draft, opacity } = this;
 
-        let LOA = hull.attributes.LOA;
-        let BOA = hull.attributes.BOA;
-        let Depth = hull.attributes.Depth;
-
-        //None of these are changed during correction of the geometry.
-        let stations = hull.halfBreadths.stations;
-        let waterlines = hull.halfBreadths.waterlines;
-        let table = hull.halfBreadths.table;
+		const { attributes: { LOA, BOA, Depth }, halfBreadths: { stations, waterlines, table } } = this;
 
         if ( this.hGeom ) this.hGeom.dispose();
         this.hGeom = new HullSideGeometry( stations, waterlines, table );
@@ -387,8 +378,10 @@ export class Hull extends THREE.Group {
 
         if ( this.port ) this.remove( this.port );
         this.port = new THREE.Mesh( this.hGeom, this.hMat );
+		this.port.name = "HullPortSide"
         if ( this.starboard ) this.remove( this.starboard );
         this.starboard = new THREE.Mesh( this.hGeom, this.hMat );
+		this.starboard.name = "HullStarboardSide"
         this.starboard.scale.y = - 1;
         this.add( this.port, this.starboard );
 
@@ -405,6 +398,29 @@ export class Hull extends THREE.Group {
         this.scale.set( LOA, 0.5 * BOA, Depth );
 
     }
+
+	addBulkheads(att, x, th, d) {
+
+		if (this.bulkheads == undefined) {
+
+			let BOA = att.BOA
+			let Depth = att.Depth
+
+			this.bulkheads =  new THREE.Group()
+			this.bulkheads.scale.set( 1, 0.5 * BOA, Depth );
+
+		}		
+
+        this.bhGeom = new THREE.BoxBufferGeometry( 1, 1, 1 );
+        this.bhGeom.translate( 0, 0, 0.5 );
+        
+		let bhMat = new THREE.MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: THREE.DoubleSide } );
+        bhGeom.translate( 0.5, 0, 0 );
+        
+		let bhs = ship.structure.bulkheads;
+        let bhk = Object.keys( bhs );
+
+	}
 
     wigley_formula() {
         /*
@@ -522,6 +538,7 @@ class HullSideGeometry extends THREE.PlaneBufferGeometry {
 
 		//Get rid of nulls by merging their points with the closest non-null point in the same station:
 		/*I am joining some uvs too. Then an applied texture will be cropped, not distorted, where the hull is cropped.*/
+		// TODO: Instead of getting the closest, makes it find and approximation for the tip of the vessel
 		let uv = this.getAttribute( "uv" );
 		let uva = uv.array;
 		//Iterate over stations
@@ -608,6 +625,26 @@ class HullSideGeometry extends THREE.PlaneBufferGeometry {
 		pos.needsUpdate = true;
 		uv.needsUpdate = true;
 		this.computeVertexNormals();
+
+	}
+
+}
+
+class Bulkhead extends THREE.Mesh {
+
+	constructor(bhGeom, bhMat) {
+
+
+		// let bhGeom = new THREE.BoxBufferGeometry( 1, 1, 1 );
+		// bhGeom.translate( 0, 0, 0.5 );
+		// bhGeom.translate( 0.5, 0, 0 );
+
+		// let bhMat = new THREE.MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: THREE.DoubleSide } );
+
+		// super(bhGeom, bhMat)
+
+		// bulkhead.scale.set( bh.thickness, 1, 1 );
+		// bulkhead.position.set( bh.xAft, 0, 0 );
 
 	}
 
