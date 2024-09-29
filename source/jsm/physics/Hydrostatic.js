@@ -12,28 +12,7 @@ export class HullHydrostatics {
         const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(hull, h) 
         
         
-        const { volume,
-                disp,
-                KB,
-                LCB, 
-                AWL,
-                LCF, 
-                IT,
-                Iy,
-                IL,
-                TPC } = this.computeHydrostatics(x, z, submerged_table, waterline_row)
-
-        // Assigning computed hydrostatic values to the instance
-        this.volume = volume;
-        this.displacement = disp;
-        this.KB = KB;
-        this.LCB = LCB;
-        this.AWL = AWL;
-        this.LCF = LCF;
-        this.IT = IT;
-        this.Iy = Iy;
-        this.IL = IL;
-        this.TPC = TPC;
+        Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
         
     }
 
@@ -47,7 +26,9 @@ export class HullHydrostatics {
         const tables = geometry.table;
         const LOA = hull.attributes.LOA;  // Length Overall
         const Depth = hull.attributes.Depth;  // Depth
-        const BOA = hull.attributes.Depth; // BOAl
+        const BOA = hull.attributes.BOA; // BOA
+
+        const HALF_BREADTHS = BOA / 2
         
         // Compute the station positions scaled by LOA (Length Overall)
         const stationPositions = geometry.stations.map((station) => station * LOA);
@@ -56,18 +37,19 @@ export class HullHydrostatics {
         const { index, mu } = bisectionSearch(geometry.waterlines, h);
         
         // Get waterlines up to the found index, scaled by the hull's Depth
-        const scaledWaterlines = geometry.waterlines.slice(0, index).map((waterline) => waterline * Depth);
+        const scaledWaterlines = geometry.waterlines.slice(0, index + 1).map((waterline) => waterline * Depth);
         
         // Slice the corresponding part of the tables up to the scaled waterlines
         const slicedTables = tables.slice(0, scaledWaterlines.length).map((row) => {
 
-            return row.map(value => value * BOA);
+            // Reference in the center of the Ship, therefore multiply for BOA/2
+            return row.map(value => value * HALF_BREADTHS);
 
         });
         
         // Identify the last and the next lines in the table for interpolation
         const lastTableLine = slicedTables[slicedTables.length - 1];
-        const nextTableLine = tables[scaledWaterlines.length].map(value => value * BOA);
+        const nextTableLine = tables[scaledWaterlines.length].map(value => value * HALF_BREADTHS);
         
         // Interpolate the values between the last and next table lines
         const interpolatedWaterlineRow = lastTableLine.map((value, i) => {
@@ -119,6 +101,8 @@ export class HullHydrostatics {
         
         const TPC = AWL * 1.025 / 100
 
+        const BM = IT / volume
+
         return {
             "volume": volume,
             "disp": disp,
@@ -129,7 +113,8 @@ export class HullHydrostatics {
             "IT": IT,
             "Iy": Iy,
             "IL": IL,
-            "TPC": TPC
+            "TPC": TPC,
+            "BM": BM,
         }
 
     }

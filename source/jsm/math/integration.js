@@ -18,7 +18,7 @@ export function trapezoidalIntegratorCoefficients(x, y) {
     // Create the storage of coefficients
     let func_areas = [], func_moments = [], fm_long = [], fm_trans = []
 
-    for (let i = 0; i < N - 1; i++) {
+    for (let i = 0; i < N; i++) {
         
         const fa = multiplier[i] * y[i]
         const fm = fa * x[i]

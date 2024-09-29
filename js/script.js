@@ -1,3 +1,4 @@
+import { HullHydrostatics } from "../source/jsm/physics/Hydrostatic.js";
 import * as Vessel3D from "../source/vessel3D.js";
 
 const ship = new Vessel3D.Ship()

@@ -27,6 +27,7 @@
   "dependencies": {
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-terser": "^0.4.4",
+    "jest-environment-jsdom": "^29.7.0",
     "rollup": "^4.21.3"
   },
   "devDependencies": {
