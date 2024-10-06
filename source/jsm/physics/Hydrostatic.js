@@ -1,10 +1,16 @@
 import { simpsonIntegratorDiscrete, trapezoidalIntegratorCoefficients } from "../math/integration.js"
 import { lerp, bisectionSearch } from "../math/interpolation.js"
-import { geometricCenter } from "../math/arrayOperations.js"
+import { geometricCenter, multiplyArrayByConst } from "../math/arrayOperations.js"
 
 export class HullHydrostatics {
 
     constructor(hull) {
+
+        if (hull.design_draft > hull.attributes.Depth) {
+
+            throw new Error("Design draft is bigger than the depth which is realistically impossible.")
+
+        }
 
         const h = hull.design_draft / hull.attributes.Depth
 
@@ -30,46 +36,71 @@ export class HullHydrostatics {
 
         const HALF_BREADTHS = BOA / 2
         
-        // Compute the station positions scaled by LOA (Length Overall)
-        const stationPositions = geometry.stations.map((station) => station * LOA);
         
-        // Find the index and interpolation factor 'mu' for waterline height 'h'
-        const { index, mu } = bisectionSearch(geometry.waterlines, h);
+        // Find the parameters and the submerged waterlines and half breadths tables
+        const { submergedWaterLines, submergedTables, interpolatedTableLine } = this.takeSubmergedTables(
+                                                                        geometry.waterlines, 
+                                                                        geometry.table, 
+                                                                        h
+                                                                    );
         
-        // Get waterlines up to the found index, scaled by the hull's Depth
-        const scaledWaterlines = geometry.waterlines.slice(0, index + 1).map((waterline) => waterline * Depth);
-        
-        // Slice the corresponding part of the tables up to the scaled waterlines
-        const slicedTables = tables.slice(0, scaledWaterlines.length).map((row) => {
+        // Scaling the submerged tables
+        const slicedTables = submergedTables.map((row) => {
 
             // Reference in the center of the Ship, therefore multiply for BOA/2
-            return row.map(value => value * HALF_BREADTHS);
+            return multiplyArrayByConst(row, HALF_BREADTHS);
+            
+        });        
+        const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS)
+        const stationPositions = multiplyArrayByConst(geometry.stations, LOA)
+        const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth)
 
-        });
-        
-        // Identify the last and the next lines in the table for interpolation
-        const lastTableLine = slicedTables[slicedTables.length - 1];
-        const nextTableLine = tables[scaledWaterlines.length].map(value => value * HALF_BREADTHS);
-        
-        // Interpolate the values between the last and next table lines
-        const interpolatedWaterlineRow = lastTableLine.map((value, i) => {
-
-            return lerp(nextTableLine[i], value, mu);
-        
-        });
-        
-        // Append the hull's design draft to the scaled waterlines
-        scaledWaterlines.push(hull.design_draft);
-        
-        // Add the interpolated waterline row to the sliced table
-        slicedTables.push(interpolatedWaterlineRow);
-        
         return {
             "x": stationPositions,
             "z": scaledWaterlines,
             "submerged_table": slicedTables,
             "waterline_row": interpolatedWaterlineRow
         };
+
+    }
+
+    /**
+     * 
+     * @param {Array.<number>} waterLines 
+     * @param {number} h Location of the water line relative to the Depth. h = 1 for draft equals to the Depth 
+     * @returns 
+     */
+    takeSubmergedTables ( waterLines, tables, h ) {
+
+        // By pass in case the draft is equal to the depth
+        if (h === 1) {
+            
+            const lastIndex = waterLines.length - 1
+            
+            return { index: lastIndex, mu: 0, submergedWaterLines: waterLines, submergedTables: tables}               
+        }
+        
+        // Find the index and interpolation factor 'mu' for waterline height 'h'
+        const { index, mu } = bisectionSearch(waterLines, h);
+        
+        const submergedWaterLines = waterLines.slice(0, index + 1)
+        
+        const submergedTables = tables.slice(0, submergedWaterLines.length)
+        
+        
+        // Complete tables by applying a linear interpolation in the last height before the waterline
+        const lastTableLine = tables[index]
+        const nextTableLine = tables[index + 1]
+        const interpolatedTableLine = lastTableLine.map((value, i) => {
+
+            return lerp(value, nextTableLine[i], mu);
+        
+        });
+        
+        submergedTables.push(interpolatedTableLine)
+        submergedWaterLines.push(h)
+
+        return { index, mu, submergedWaterLines, submergedTables, interpolatedTableLine }
 
     }
 

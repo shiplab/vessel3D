@@ -284,8 +284,8 @@ export class Hull extends THREE.Group {
 
 		const { attributes: { LOA, BOA, Depth }, halfBreadths: { stations, waterlines, table } } = this;
 
-        if ( this.hGeom ) this.hGeom.dispose();
-        this.hGeom = new HullSideGeometry( stations, waterlines, table );
+        if ( this.hullGeometry ) this.hullGeometry.dispose();
+        this.hullGeometry = new HullSideGeometry( stations, waterlines, table );
 
         let N = stations.length;
         let M = waterlines.length;
@@ -377,10 +377,10 @@ export class Hull extends THREE.Group {
         this.hMat.uniforms.opacity.value = opacity;
 
         if ( this.port ) this.remove( this.port );
-        this.port = new THREE.Mesh( this.hGeom, this.hMat );
+        this.port = new THREE.Mesh( this.hullGeometry, this.hMat );
 		this.port.name = "HullPortSide"
         if ( this.starboard ) this.remove( this.starboard );
-        this.starboard = new THREE.Mesh( this.hGeom, this.hMat );
+        this.starboard = new THREE.Mesh( this.hullGeometry, this.hMat );
 		this.starboard.name = "HullStarboardSide"
         this.starboard.scale.y = - 1;
         this.add( this.port, this.starboard );
@@ -411,11 +411,11 @@ export class Hull extends THREE.Group {
 
 		}		
 
-        this.bhGeom = new THREE.BoxBufferGeometry( 1, 1, 1 );
-        this.bhGeom.translate( 0, 0, 0.5 );
+        this.bulkHeadGeometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+        this.bulkHeadGeometry.translate( 0, 0, 0.5 );
         
 		let bhMat = new THREE.MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: THREE.DoubleSide } );
-        bhGeom.translate( 0.5, 0, 0 );
+        bulkHeadGeometry.translate( 0.5, 0, 0 );
         
 		let bhs = ship.structure.bulkheads;
         let bhk = Object.keys( bhs );
@@ -632,16 +632,16 @@ class HullSideGeometry extends THREE.PlaneBufferGeometry {
 
 class Bulkhead extends THREE.Mesh {
 
-	constructor(bhGeom, bhMat) {
+	constructor(bulkHeadGeometry, bhMat) {
 
 
-		// let bhGeom = new THREE.BoxBufferGeometry( 1, 1, 1 );
-		// bhGeom.translate( 0, 0, 0.5 );
-		// bhGeom.translate( 0.5, 0, 0 );
+		// let bulkHeadGeometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+		// bulkHeadGeometry.translate( 0, 0, 0.5 );
+		// bulkHeadGeometry.translate( 0.5, 0, 0 );
 
 		// let bhMat = new THREE.MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: THREE.DoubleSide } );
 
-		// super(bhGeom, bhMat)
+		// super(bulkHeadGeometry, bhMat)
 
 		// bulkhead.scale.set( bh.thickness, 1, 1 );
 		// bulkhead.position.set( bh.xAft, 0, 0 );

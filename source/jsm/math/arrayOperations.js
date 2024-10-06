@@ -4,9 +4,15 @@ export function sumArray(array) {
 
 } 
 
+export function multiplyArrayByConst(array, C) {
+
+    return array.map(v => v * C)
+
+}
+
 export function productArray(array_one, array_two) {
 
-    console.assert(array_one.length == array_two.length)
+    console.assert(array_one.length === array_two.length)
 
     return array_one.map((e, i) => e * array_two[i])
 
