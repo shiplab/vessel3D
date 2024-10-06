@@ -96,9 +96,11 @@ describe( "Test Ship Hydrostatics Formulas for Area", () => {
 
         expect( hullHydrostatics.IT ).toBeCloseTo( IT );
         console.log(`IT = ${IT} = ${hullHydrostatics.IT}`); 
-        expect( hullHydrostatics.KB ).not.toBeCloseTo( 2 * 2 / 3 ); 
+        expect( hullHydrostatics.IL ).not.toBeCloseTo( IL );
+        console.log(`IL = ${IL} = ${hullHydrostatics.IL}`); 
+        expect( hullHydrostatics.KB ).not.toBeCloseTo( KB ); 
         console.log(`KB = ${KB} = ${hullHydrostatics.KB}`);
-        
+
     })
 
     test( "Volumetric verification formulas for dense points triangular ship", () => {
@@ -153,7 +155,12 @@ describe( "Test Ship Hydrostatics Formulas for Area", () => {
         const BWL = hull.attributes.BOA / 2
         const LOA = hull.attributes.LOA 
         const IL = BWL * Math.pow(LOA, 3) / 12
-        console.log(`IL = ${IL} = ${hullHydrostatics.IL}`); 
+        const KB = hull.design_draft * 2 / 3 // Center of the volume of a triangular hull
+
+        expect( hullHydrostatics.IL ).not.toBeCloseTo( IL );
+        console.log(`IL = ${IL} = ${hullHydrostatics.IL}. Values get closer but not equal.`); 
+        expect( hullHydrostatics.KB ).not.toBeCloseTo( KB ); 
+        console.log(`KB = ${KB} = ${hullHydrostatics.KB}. Values get closer but not equal.`);
 
     })
 
