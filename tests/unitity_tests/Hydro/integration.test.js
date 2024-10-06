@@ -92,11 +92,13 @@ describe( "Test Ship Hydrostatics Formulas for Area", () => {
         const LOA = hull.attributes.LOA 
         const IT = LOA * Math.pow(BWL, 3) / 12
         const IL = BWL * Math.pow(LOA, 3) / 12
+        const KB = hull.design_draft * 2 / 3 // Center of the volume of a triangular hull
 
         expect( hullHydrostatics.IT ).toBeCloseTo( IT );
         console.log(`IT = ${IT} = ${hullHydrostatics.IT}`); 
         expect( hullHydrostatics.KB ).not.toBeCloseTo( 2 * 2 / 3 ); 
-        console.log(`IL = ${IL} = ${hullHydrostatics.IL}`); 
+        console.log(`KB = ${KB} = ${hullHydrostatics.KB}`);
+        
     })
 
     test( "Volumetric verification formulas for dense points triangular ship", () => {
