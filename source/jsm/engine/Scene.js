@@ -5,7 +5,6 @@ import * as THREE from "../../libs/three.js"
 import { OrbitControls } from "../../libs/OrbitControls.js";
 import { DragControls } from "../../libs/DragControls.js";
 
-
 export class Scene extends THREE.Scene {
 
     constructor(spec) {
@@ -90,13 +89,13 @@ export class Scene extends THREE.Scene {
         // the chosen system by the Three.js developers (x, z, y)
         this.zUpCont.add(element);
         
-
     }
 
     addAxesHelper(size = 10) {
         
         const axesHelper = new THREE.AxesHelper( 10 );
         this.addToScene( axesHelper );
+
     }
 
     

@@ -11,10 +11,8 @@ export class Ship {
 
     constructor( specification ) {
 
-        // Read the GLTF in case the specification is assigned
+        // TODO: Read the GLTF in case the specification is assigned
         // function read_gltf() {}
-
-        this.scene = new Scene()
 
         // List of compartments
         this.compartments = []
@@ -24,7 +22,6 @@ export class Ship {
     addHull (hull, design_draft) {
         
         this.hull = new Hull(hull, design_draft)
-        this.scene.addToScene(this.hull)
 
     }
 
