@@ -1,6 +1,6 @@
 {
   "name": "@shiplab/vessel3d",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Library for conceptual ship visualization using as support Three.js library",
   "main": "vessel3D.js",
   "scripts": {
