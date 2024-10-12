@@ -41838,6 +41838,10 @@ class DragControls extends EventDispatcher {
 
 }
 
+function getRandomColor() {
+    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+}
+
 // import { Scene } from "../../libs/three.js";
 // import { Camera } from "../../libs/three.js";
 
@@ -41854,6 +41858,8 @@ class Scene extends Scene$1 {
         this.zUpCont = new Group();
         this.zUpCont.rotation.x = -0.5 * Math.PI;
         this.add(this.zUpCont);
+
+        this.compartment_mesh = [];
 
         this._init(spec);
     
@@ -41919,13 +41925,73 @@ class Scene extends Scene$1 {
 
     }
 
+    initializeDragControls() {
+
+        this._initializeDragControls(this.compartment_mesh);
+
+    }
+
     addToScene( element ) {
         
         // This add element is a workaround for covering the difference in the coordinate
         // system between the traditional coordinate of system (x, y, z) in engineering and
         // the chosen system by the Three.js developers (x, z, y)
+        if(element.constructor.name == "Ship") {
+            
+            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
+        
+        }
+
         this.zUpCont.add(element);
         
+    }
+
+    addShip( ship ) {
+
+        this.addToScene(ship.hull);
+        
+        ship.compartments.forEach(compartment => {
+
+            this.addCompartment(compartment);
+        
+        });
+
+    }
+
+    addCompartment( compartment ) {
+        
+        // TODO: length is a special case for javascript, 
+        // maybe should be better to change to
+        // something else @ferrari212.
+        const length = compartment["length"];
+        const width = compartment["width"];
+        const height = compartment["height"];
+
+        const xpos = compartment["xpos"];
+        const ypos = compartment["ypos"];
+        const zpos = compartment["zpos"];
+        
+        const geometry = new BoxGeometry(width, height, length);
+        const material = new MeshBasicMaterial({ color: getRandomColor() });
+        
+        // Stores the original color of the compartments
+        material.originalColor = material.color.getHexString();
+        
+        const compartment_mesh = new Mesh(geometry, material);
+        
+        // Rotate to match ZUp reference
+        compartment_mesh.rotation.set(Math.PI / 2, Math.PI / 2, 0); 
+        
+        compartment_mesh.position.set(
+            xpos,
+            ypos,
+            zpos,
+        );
+
+        this.compartment_mesh.push(compartment_mesh);
+
+        this.addToScene(compartment_mesh);
+
     }
 
     addAxesHelper(size = 10) {
@@ -41934,26 +42000,32 @@ class Scene extends Scene$1 {
         this.addToScene( axesHelper );
 
     }
-
     
-    
-}
-
-function getRandomColor() {
-    return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
 }
 
 class Compartments extends Mesh {
 
-    constructor( geometry, material ) {
+    constructor( {
+        length = 10,
+        width = 10,
+        height = 10,
+        xpos = 0,
+        ypos = 0,
+        zpos = 0,
+        type = "compartment"
+    } = {} ) {
         
-        super(geometry, material);
+        const compartment = {
+            length,
+            width,
+            height,
+            xpos,
+            ypos,
+            zpos,
+            type
+        }; 
 
-        // Stores the original size of the compartments
-        this.material.originalColor = material.color.getHexString();
-
-        
-        this.rotation.set(Math.PI / 2, Math.PI / 2, 0); 
+        return compartment
 
     }
 
@@ -42901,7 +42973,7 @@ class Ship {
     addHull (hull) {
 
         if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
-         
+        
             throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
         
         }
@@ -42940,34 +43012,12 @@ class Ship {
         
     }
 
-    addCompartments({
-        length = 10,
-        width = 10,
-        height = 10,
-        xpos = 0,
-        ypos = 0,
-        zpos = 0,
-        type = "compartment"
-    } = {}) {
+    addCompartments(compartmentObject) {
     
-        console.log(width, height, length);
-        
-        const geometry = new BoxGeometry(width, height, length);
-        const material = new MeshBasicMaterial({ color: getRandomColor() });
-        const compartment = new Compartments(geometry, material);
-        
-        compartment.position.set(
-            xpos,
-            ypos,
-            zpos,
-        );
+        const compartment = new Compartments(compartmentObject);
 
-        this.scene.addToScene(compartment);
         this.compartments.push(compartment);
-
-        // Update the controls to accommodate the change in the scene
-        this.scene.orbitControls.update();
-
+        
     }
 
     initializeDragControls() {
