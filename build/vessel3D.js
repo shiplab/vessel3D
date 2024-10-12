@@ -41842,7 +41842,6 @@ class DragControls extends EventDispatcher {
 // import { Camera } from "../../libs/three.js";
 
 
-
 class Scene extends Scene$1 {
 
     constructor(spec) {
@@ -41927,13 +41926,13 @@ class Scene extends Scene$1 {
         // the chosen system by the Three.js developers (x, z, y)
         this.zUpCont.add(element);
         
-
     }
 
     addAxesHelper(size = 10) {
         
         const axesHelper = new AxesHelper( 10 );
         this.addToScene( axesHelper );
+
     }
 
     
@@ -42241,8 +42240,8 @@ class Hull extends Group {
 
 		const { attributes: { LOA, BOA, Depth }, halfBreadths: { stations, waterlines, table } } = this;
 
-        if ( this.hGeom ) this.hGeom.dispose();
-        this.hGeom = new HullSideGeometry( stations, waterlines, table );
+        if ( this.hullGeometry ) this.hullGeometry.dispose();
+        this.hullGeometry = new HullSideGeometry( stations, waterlines, table );
 
         let N = stations.length;
         let M = waterlines.length;
@@ -42334,10 +42333,10 @@ class Hull extends Group {
         this.hMat.uniforms.opacity.value = opacity;
 
         if ( this.port ) this.remove( this.port );
-        this.port = new Mesh( this.hGeom, this.hMat );
+        this.port = new Mesh( this.hullGeometry, this.hMat );
 		this.port.name = "HullPortSide";
         if ( this.starboard ) this.remove( this.starboard );
-        this.starboard = new Mesh( this.hGeom, this.hMat );
+        this.starboard = new Mesh( this.hullGeometry, this.hMat );
 		this.starboard.name = "HullStarboardSide";
         this.starboard.scale.y = - 1;
         this.add( this.port, this.starboard );
@@ -42368,11 +42367,11 @@ class Hull extends Group {
 
 		}		
 
-        this.bhGeom = new BoxGeometry( 1, 1, 1 );
-        this.bhGeom.translate( 0, 0, 0.5 );
+        this.bulkHeadGeometry = new BoxGeometry( 1, 1, 1 );
+        this.bulkHeadGeometry.translate( 0, 0, 0.5 );
         
 		new MeshPhongMaterial( { color: 0xcccccc /*this.randomColor()*/, transparent: true, opacity: 0.5, side: DoubleSide } );
-        bhGeom.translate( 0.5, 0, 0 );
+        bulkHeadGeometry.translate( 0.5, 0, 0 );
         
 		ship.structure.bulkheads;
 
@@ -42592,6 +42591,12 @@ function sumArray(array) {
 
 } 
 
+function multiplyArrayByConst(array, C) {
+
+    return array.map(v => v * C)
+
+}
+
 function geometricCenter(array, x) {
 
     // Multiplying the last and first values of the array by half improve the numerical precision.
@@ -42734,13 +42739,18 @@ function simpsonIntegratorDiscrete(x, y) {
 
 class HullHydrostatics {
 
-    constructor(hull) {
+    constructor(hull, draft) {
 
-        const h = hull.design_draft / hull.attributes.Depth;
+        if (draft > hull.attributes.Depth) {
+
+            throw new Error("Design draft is bigger than the depth which is realistically impossible.")
+
+        }
+
+        const h = draft / hull.attributes.Depth;
 
 
         const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(hull, h); 
-        
         
         Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
         
@@ -42749,57 +42759,82 @@ class HullHydrostatics {
     interpolateWaterline(hull, h = 1) {
 
         // Get the hull geometry's port side surface
-        const sideSurface = hull.getObjectByName("HullPortSide");
-        const geometry = sideSurface.geometry;
+        const waterLines = hull.halfBreadths.waterlines;
+        const stations = hull.halfBreadths.stations;
+        const table = hull.halfBreadths.table;
         
         // Extract the geometry tables and hull dimensions
-        const tables = geometry.table;
         const LOA = hull.attributes.LOA;  // Length Overall
         const Depth = hull.attributes.Depth;  // Depth
         const BOA = hull.attributes.BOA; // BOA
 
         const HALF_BREADTHS = BOA / 2;
         
-        // Compute the station positions scaled by LOA (Length Overall)
-        const stationPositions = geometry.stations.map((station) => station * LOA);
         
-        // Find the index and interpolation factor 'mu' for waterline height 'h'
-        const { index, mu } = bisectionSearch(geometry.waterlines, h);
+        // Find the parameters and the submerged waterlines and half breadths tables
+        const { submergedWaterLines, submergedTables, interpolatedTableLine } = this.takeSubmergedTables(
+                                                                        waterLines, 
+                                                                        table, 
+                                                                        h
+                                                                    );
         
-        // Get waterlines up to the found index, scaled by the hull's Depth
-        const scaledWaterlines = geometry.waterlines.slice(0, index + 1).map((waterline) => waterline * Depth);
-        
-        // Slice the corresponding part of the tables up to the scaled waterlines
-        const slicedTables = tables.slice(0, scaledWaterlines.length).map((row) => {
+        // Scaling the submerged tables
+        const slicedTables = submergedTables.map((row) => {
 
             // Reference in the center of the Ship, therefore multiply for BOA/2
-            return row.map(value => value * HALF_BREADTHS);
+            return multiplyArrayByConst(row, HALF_BREADTHS);
+            
+        });        
+        const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS);
+        const stationPositions = multiplyArrayByConst(stations, LOA);
+        const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth);
 
-        });
-        
-        // Identify the last and the next lines in the table for interpolation
-        const lastTableLine = slicedTables[slicedTables.length - 1];
-        const nextTableLine = tables[scaledWaterlines.length].map(value => value * HALF_BREADTHS);
-        
-        // Interpolate the values between the last and next table lines
-        const interpolatedWaterlineRow = lastTableLine.map((value, i) => {
-
-            return lerp(nextTableLine[i], value, mu);
-        
-        });
-        
-        // Append the hull's design draft to the scaled waterlines
-        scaledWaterlines.push(hull.design_draft);
-        
-        // Add the interpolated waterline row to the sliced table
-        slicedTables.push(interpolatedWaterlineRow);
-        
         return {
             "x": stationPositions,
             "z": scaledWaterlines,
             "submerged_table": slicedTables,
             "waterline_row": interpolatedWaterlineRow
         };
+
+    }
+
+    /**
+     * 
+     * @param {Array.<number>} waterLines 
+     * @param {number} h Location of the water line relative to the Depth. h = 1 for draft equals to the Depth 
+     * @returns 
+     */
+    takeSubmergedTables ( waterLines, tables, h ) {
+
+        // By pass in case the draft is equal to the depth
+        if (h === 1) {
+            
+            const lastIndex = waterLines.length - 1;
+            
+            return { index: lastIndex, mu: 0, submergedWaterLines: waterLines, submergedTables: tables}               
+        }
+        
+        // Find the index and interpolation factor 'mu' for waterline height 'h'
+        const { index, mu } = bisectionSearch(waterLines, h);
+        
+        const submergedWaterLines = waterLines.slice(0, index + 1);
+        
+        const submergedTables = tables.slice(0, submergedWaterLines.length);
+        
+        
+        // Complete tables by applying a linear interpolation in the last height before the waterline
+        const lastTableLine = tables[index];
+        const nextTableLine = tables[index + 1];
+        const interpolatedTableLine = lastTableLine.map((value, i) => {
+
+            return lerp(value, nextTableLine[i], mu);
+        
+        });
+        
+        submergedTables.push(interpolatedTableLine);
+        submergedWaterLines.push(h);
+
+        return { index, mu, submergedWaterLines, submergedTables, interpolatedTableLine }
 
     }
 
@@ -42811,19 +42846,19 @@ class HullHydrostatics {
             const yi = submerged_table.map(row => row[i]);
             
             return 2 * simpsonIntegratorDiscrete(z, yi);
-
+            
         });
-        
+
         // Waterline areas
         const wl_area = submerged_table.map( row => {
             
             return 2 * simpsonIntegratorDiscrete(x, row);
             
         });
-
+        
         const volume = simpsonIntegratorDiscrete(z, wl_area);
         const disp = 1025 * volume * 9.81;
-
+        
         const KB = geometricCenter(wl_area, z);
         const LCB = geometricCenter(cs_area, x);
         
@@ -42855,28 +42890,31 @@ class Ship {
 
     constructor( specification ) {
 
-        // Read the GLTF in case the specification is assigned
+        // TODO: Read the GLTF in case the specification is assigned
         // function read_gltf() {}
-
-        this.scene = new Scene();
 
         // List of compartments
         this.compartments = [];
 
     }
 
-    addHull (hull, design_draft) {
+    addHull (hull) {
+
+        if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
+         
+            throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
         
-        this.hull = new Hull(hull, design_draft);
-        this.scene.addToScene(this.hull);
+        }
+                
+        this.hull = new Hull(hull, hull.design_draft);
 
     }
 
     initializeHydrostatics () {
 
-        if ( !this.hull ) throw new Error( 'Hydrostatics only available after the hul definition. Use addHull method' );
+        if ( !this.hull ) throw new Error( 'Hydrostatics only available after hull definition. Use addHull method' );
 
-        this.HullHydrostatics = new HullHydrostatics(this.hull);
+        this.HullHydrostatics = new HullHydrostatics(this.hull, this.hull.design_draft);
 
     }
 
@@ -42958,4 +42996,4 @@ if ( typeof window !== "undefined" ) {
 
 }
 
-export { Scene, Ship, math };
+export { HullHydrostatics, Scene, Ship, math };
