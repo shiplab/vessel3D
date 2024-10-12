@@ -4,6 +4,7 @@
 import * as THREE from "../../libs/three.js"
 import { OrbitControls } from "../../libs/OrbitControls.js";
 import { DragControls } from "../../libs/DragControls.js";
+import { getRandomColor } from "../math/randomFunctions.js"
 
 export class Scene extends THREE.Scene {
 
@@ -17,6 +18,8 @@ export class Scene extends THREE.Scene {
         this.zUpCont = new THREE.Group();
         this.zUpCont.rotation.x = -0.5 * Math.PI;
         this.add(this.zUpCont)
+
+        this.compartment_mesh = []
 
         this._init(spec);
     
@@ -82,13 +85,73 @@ export class Scene extends THREE.Scene {
 
     }
 
+    initializeDragControls() {
+
+        this._initializeDragControls(this.compartment_mesh)
+
+    }
+
     addToScene( element ) {
         
         // This add element is a workaround for covering the difference in the coordinate
         // system between the traditional coordinate of system (x, y, z) in engineering and
         // the chosen system by the Three.js developers (x, z, y)
+        if(element.constructor.name == "Ship") {
+            
+            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
+        
+        }
+
         this.zUpCont.add(element);
         
+    }
+
+    addShip( ship ) {
+
+        this.addToScene(ship.hull)
+        
+        ship.compartments.forEach(compartment => {
+
+            this.addCompartment(compartment)
+        
+        });
+
+    }
+
+    addCompartment( compartment ) {
+        
+        // TODO: length is a special case for javascript, 
+        // maybe should be better to change to
+        // something else @ferrari212.
+        const length = compartment["length"]
+        const width = compartment["width"]
+        const height = compartment["height"]
+
+        const xpos = compartment["xpos"]
+        const ypos = compartment["ypos"]
+        const zpos = compartment["zpos"]
+        
+        const geometry = new THREE.BoxGeometry(width, height, length);
+        const material = new THREE.MeshBasicMaterial({ color: getRandomColor() });
+        
+        // Stores the original color of the compartments
+        material.originalColor = material.color.getHexString()
+        
+        const compartment_mesh = new THREE.Mesh(geometry, material);
+        
+        // Rotate to match ZUp reference
+        compartment_mesh.rotation.set(Math.PI / 2, Math.PI / 2, 0); 
+        
+        compartment_mesh.position.set(
+            xpos,
+            ypos,
+            zpos,
+        )
+
+        this.compartment_mesh.push(compartment_mesh)
+
+        this.addToScene(compartment_mesh)
+
     }
 
     addAxesHelper(size = 10) {
@@ -97,7 +160,5 @@ export class Scene extends THREE.Scene {
         this.addToScene( axesHelper );
 
     }
-
-    
     
 }

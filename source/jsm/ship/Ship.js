@@ -1,5 +1,3 @@
-import { Scene } from "../engine/Scene.js";
-import { getRandomColor } from "../math/randomFunctions.js"
 import { Compartments } from "./Compartments.js";
 import { Hull } from "./Hull.js"
 
@@ -22,7 +20,7 @@ export class Ship {
     addHull (hull) {
 
         if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
-         
+        
             throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
         
         }
@@ -61,34 +59,12 @@ export class Ship {
         
     }
 
-    addCompartments({
-        length = 10,
-        width = 10,
-        height = 10,
-        xpos = 0,
-        ypos = 0,
-        zpos = 0,
-        type = "compartment"
-    } = {}) {
+    addCompartments(compartmentObject) {
     
-        console.log(width, height, length);
-        
-        const geometry = new THREE.BoxGeometry(width, height, length);
-        const material = new THREE.MeshBasicMaterial({ color: getRandomColor() });
-        const compartment = new Compartments(geometry, material);
-        
-        compartment.position.set(
-            xpos,
-            ypos,
-            zpos,
-        )
+        const compartment = new Compartments(compartmentObject)
 
-        this.scene.addToScene(compartment);
         this.compartments.push(compartment)
-
-        // Update the controls to accommodate the change in the scene
-        this.scene.orbitControls.update()
-
+        
     }
 
     initializeDragControls() {

@@ -2,15 +2,27 @@ import * as THREE from "../../libs/three.js"
 
 export class Compartments extends THREE.Mesh {
 
-    constructor( geometry, material ) {
+    constructor( {
+        length = 10,
+        width = 10,
+        height = 10,
+        xpos = 0,
+        ypos = 0,
+        zpos = 0,
+        type = "compartment"
+    } = {} ) {
         
-        super(geometry, material)
+        const compartment = {
+            length,
+            width,
+            height,
+            xpos,
+            ypos,
+            zpos,
+            type
+        } 
 
-        // Stores the original size of the compartments
-        this.material.originalColor = material.color.getHexString()
-
-        
-        this.rotation.set(Math.PI / 2, Math.PI / 2, 0); 
+        return compartment
 
     }
 
