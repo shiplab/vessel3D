@@ -8,6 +8,7 @@ export const math = {
 
 export { Scene } from "./jsm/engine/Scene.js";
 export { Ship } from "./jsm/ship/Ship.js"
+export { HullHydrostatics } from "./jsm/physics/Hydrostatic.js"
 
 if ( typeof window !== "undefined" ) {
 

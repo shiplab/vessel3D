@@ -4,19 +4,18 @@ import { geometricCenter, multiplyArrayByConst } from "../math/arrayOperations.j
 
 export class HullHydrostatics {
 
-    constructor(hull) {
+    constructor(hull, draft) {
 
-        if (hull.design_draft > hull.attributes.Depth) {
+        if (draft > hull.attributes.Depth) {
 
             throw new Error("Design draft is bigger than the depth which is realistically impossible.")
 
         }
 
-        const h = hull.design_draft / hull.attributes.Depth
+        const h = draft / hull.attributes.Depth
 
 
         const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(hull, h) 
-        
         
         Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
         
@@ -25,11 +24,11 @@ export class HullHydrostatics {
     interpolateWaterline(hull, h = 1) {
 
         // Get the hull geometry's port side surface
-        const sideSurface = hull.getObjectByName("HullPortSide");
-        const geometry = sideSurface.geometry;
+        const waterLines = hull.halfBreadths.waterlines
+        const stations = hull.halfBreadths.stations
+        const table = hull.halfBreadths.table
         
         // Extract the geometry tables and hull dimensions
-        const tables = geometry.table;
         const LOA = hull.attributes.LOA;  // Length Overall
         const Depth = hull.attributes.Depth;  // Depth
         const BOA = hull.attributes.BOA; // BOA
@@ -39,8 +38,8 @@ export class HullHydrostatics {
         
         // Find the parameters and the submerged waterlines and half breadths tables
         const { submergedWaterLines, submergedTables, interpolatedTableLine } = this.takeSubmergedTables(
-                                                                        geometry.waterlines, 
-                                                                        geometry.table, 
+                                                                        waterLines, 
+                                                                        table, 
                                                                         h
                                                                     );
         
@@ -52,7 +51,7 @@ export class HullHydrostatics {
             
         });        
         const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS)
-        const stationPositions = multiplyArrayByConst(geometry.stations, LOA)
+        const stationPositions = multiplyArrayByConst(stations, LOA)
         const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth)
 
         return {
@@ -112,19 +111,19 @@ export class HullHydrostatics {
             const yi = submerged_table.map(row => row[i]);
             
             return 2 * simpsonIntegratorDiscrete(z, yi);
-
+            
         });
-        
+
         // Waterline areas
         const wl_area = submerged_table.map( row => {
             
             return 2 * simpsonIntegratorDiscrete(x, row);
             
         });
-
+        
         const volume = simpsonIntegratorDiscrete(z, wl_area)
         const disp = 1025 * volume * 9.81
-
+        
         const KB = geometricCenter(wl_area, z)
         const LCB = geometricCenter(cs_area, x)
         

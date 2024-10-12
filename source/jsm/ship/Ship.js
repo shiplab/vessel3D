@@ -19,17 +19,23 @@ export class Ship {
 
     }
 
-    addHull (hull, design_draft) {
+    addHull (hull) {
+
+        if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
+         
+            throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
         
-        this.hull = new Hull(hull, design_draft)
+        }
+                
+        this.hull = new Hull(hull, hull.design_draft)
 
     }
 
     initializeHydrostatics () {
 
-        if ( !this.hull ) throw new Error( 'Hydrostatics only available after the hul definition. Use addHull method' );
+        if ( !this.hull ) throw new Error( 'Hydrostatics only available after hull definition. Use addHull method' );
 
-        this.HullHydrostatics = new HullHydrostatics(this.hull)
+        this.HullHydrostatics = new HullHydrostatics(this.hull, this.hull.design_draft)
 
     }
 
