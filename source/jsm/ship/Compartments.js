@@ -1,6 +1,4 @@
-import * as THREE from "../../libs/three.js"
-
-export class Compartments extends THREE.Mesh {
+export class Compartments {
 
     constructor( {
         length = 10,
@@ -9,8 +7,11 @@ export class Compartments extends THREE.Mesh {
         xpos = 0,
         ypos = 0,
         zpos = 0,
+        density = 1025, // Default soult water
         type = "compartment"
     } = {} ) {
+
+        const weight = length * width * height * density
         
         const compartment = {
             length,
@@ -19,10 +20,12 @@ export class Compartments extends THREE.Mesh {
             xpos,
             ypos,
             zpos,
+            density,
+            weight,
             type
-        } 
+        }
 
-        return compartment
+        Object.assign(this, compartment)
 
     }
 

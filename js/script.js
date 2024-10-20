@@ -1,6 +1,6 @@
 import * as Vessel3D from "../source/vessel3D.js";
 
-import { HullHydrostatics as Hydrostatic } from "../build/vessel3D.js";
+import { HullHydrostatics as Hydrostatic } from "../source/jsm/physics/Hydrostatic.js";
 
 const ship = new Vessel3D.Ship()
 
@@ -11,23 +11,30 @@ const ship = new Vessel3D.Ship()
 
 // 1- Define the hull and add it under ship
 const hull = {}
+// hull.halfBreadths = {        
+//     "waterlines": [0, 0, 0.5, 1],
+//     "stations":[0, 1],
+//     "table": [[0 , 0],[1 , 1], [1 , 1],[1 , 1]],
+// }
 hull.halfBreadths = {        
-    "waterlines": [0, 0, 0.5, 1],
+    "waterlines": [0, 0, 1],
     "stations":[0, 1],
-    "table": [[0 , 0],[1 , 1], [1 , 1],[1 , 1]],
+    "table": [[0 , 0],[1 , 1],[1 , 1]],
 }
 
 hull.attributes = {
     "LOA": 22.5,
     "BOA": 10,
     "Depth": 5,
-    "APP": 0
+    "APP": 0,
+    "hullStructureWeight": 800
 }
 hull.style = {
     "upperColor": "yellow",
     "lowerColor": "green",
     "opacity": 0.5
 }
+hull.structureWeight = 800 //kg
 hull.design_draft = 3
 
 ship.addHull(hull)

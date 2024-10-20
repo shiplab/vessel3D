@@ -4,7 +4,15 @@ import { geometricCenter, multiplyArrayByConst } from "../math/arrayOperations.j
 
 export class HullHydrostatics {
 
-    constructor(hull, draft) {
+    constructor(hull, draft = undefined) {
+
+        if(draft === undefined) {
+            
+            // calculate the draft by interpolation in case it is not found
+            // Step 1. Get all the weights
+            
+
+        }
 
         if (draft > hull.attributes.Depth) {
 
@@ -103,23 +111,13 @@ export class HullHydrostatics {
 
     }
 
-    computeHydrostatics(x, z, submerged_table, waterline_row) {
+    computeHydrostatics(x, z, submergedTable, waterlineRow) {
 
         // Cross-section areas
-        const cs_area = submerged_table[0].map( (_, i) => {
-            
-            const yi = submerged_table.map(row => row[i]);
-            
-            return 2 * simpsonIntegratorDiscrete(z, yi);
-            
-        });
+        const cs_area = this.calculateCrossSectionAreas(submergedTable, z)
 
         // Waterline areas
-        const wl_area = submerged_table.map( row => {
-            
-            return 2 * simpsonIntegratorDiscrete(x, row);
-            
-        });
+        const wl_area = this.calculateWaterlineAreas(submergedTable, x)
         
         const volume = simpsonIntegratorDiscrete(z, wl_area)
         const disp = 1025 * volume * 9.81
@@ -127,7 +125,7 @@ export class HullHydrostatics {
         const KB = geometricCenter(wl_area, z)
         const LCB = geometricCenter(cs_area, x)
         
-        const { AWL, LCF, IT, Iy, IL } = trapezoidalIntegratorCoefficients(x, waterline_row)
+        const { AWL, LCF, IT, Iy, IL } = trapezoidalIntegratorCoefficients(x, waterlineRow)
         
         const TPC = AWL * 1.025 / 100
 
@@ -145,6 +143,41 @@ export class HullHydrostatics {
             "IL": IL,
             "TPC": TPC,
             "BM": BM,
+        }
+
+    }
+
+    calculateCrossSectionAreas(submergedTable, z) {
+        return submergedTable[0].map((_, i) => {
+            const yi = submergedTable.map(row => row[i]);
+            return 2 * simpsonIntegratorDiscrete(z, yi);
+        });
+    }
+
+    calculateWaterlineAreas(submergedTable, x) {
+        return submergedTable.map(row => {
+            return 2 * simpsonIntegratorDiscrete(x, row);
+        });
+    }
+    
+    
+
+    calculateStabilityFromScene(scene) {
+
+        this.calculateStability()
+
+    }
+
+    calculateStability(compartments = undefined) {
+        
+        // There is two ways to asses the stability:
+        // First one is by giving the draft and calculate according
+        // to that or giving an extra step of calculating the drafit
+
+        if(compartments === undefined) {
+
+            
+
         }
 
     }

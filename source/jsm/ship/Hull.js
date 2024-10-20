@@ -67,6 +67,7 @@ export class Hull extends THREE.Group {
         this.group = "Hull3D";
 		this.name = "Hull3D";
 		this.design_draft = design_draft !== undefined ? design_draft : 0.5 * this.attributes.Depth;
+		this.structureWeight = hull.hasAttribute("hullWeight") ? hull.structureWeight : undefined;
 		this.upperColor = typeof this.style.upperColor !== "undefined" ? this.style.upperColor : 0x33aa33;
 		this.lowerColor = typeof this.style.lowerColor !== "undefined" ? this.style.lowerColor : 0xaa3333;
 		this.opacity = typeof this.style.opacity !== "undefined" ? this.style.opacity : 0.5;

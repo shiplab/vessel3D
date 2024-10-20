@@ -3,8 +3,6 @@ import { Hull } from "./Hull.js"
 
 import { HullHydrostatics } from "../physics/Hydrostatic.js"
 
-import * as THREE from "../../libs/three.js"
-
 export class Ship {
 
     constructor( specification ) {
@@ -14,6 +12,14 @@ export class Ship {
 
         // List of compartments
         this.compartments = []
+        this.cargoCompartments = []
+        this.ballastCompartments = []
+        this.fuelCompartments = []
+        this.freshWater = []
+        
+        // List of equipments
+        this.engine = []
+        this.equipments = []
 
     }
 
@@ -24,8 +30,10 @@ export class Ship {
             throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
         
         }
-                
-        this.hull = new Hull(hull, hull.design_draft)
+
+        const design_draft = hull.hasOwnProperty('propertyName') ? hull.design_draft : undefined
+
+        this.hull = new Hull(hull, design_draft)
 
     }
 
@@ -34,6 +42,12 @@ export class Ship {
         if ( !this.hull ) throw new Error( 'Hydrostatics only available after hull definition. Use addHull method' );
 
         this.HullHydrostatics = new HullHydrostatics(this.hull, this.hull.design_draft)
+
+    }
+
+    calculateStability () {
+
+        
 
     }
 

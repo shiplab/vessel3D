@@ -75,7 +75,7 @@ describe( "Test Ship Hydrostatics Formulas for Area", () => {
 
         }
                                 
-        const hullHydrostatics = new HullHydrostatics(hull)
+        const hullHydrostatics = new HullHydrostatics(hull, hull.design_draft)
 
         expect( hullHydrostatics.volume ).toBeCloseTo( 100.0 );
         console.log(`hullHydrostatics.volume: ${hullHydrostatics.volume}`);        
@@ -148,7 +148,7 @@ describe( "Test Ship Hydrostatics Formulas for Area", () => {
 
         }
 
-        const hullHydrostatics = new HullHydrostatics(hull)
+        const hullHydrostatics = new HullHydrostatics(hull, hull.design_draft)
 
         console.log(`At the spaced level of approximation KB analytical of 1.333 != ${hullHydrostatics.KB}`);
         

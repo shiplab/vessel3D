@@ -53,6 +53,10 @@ export function trapezoidalIntegratorCoefficients(x, y) {
     };
 }
 
+function trapezoidalIntegrator(x, y) {
+    
+}
+
 export function simpsonIntegrator(func, a, b, n) {
 
     // Ensure n is even for Simpson's rule, but allow odd to use 3/8 rule
@@ -120,9 +124,14 @@ export function simpsonIntegratorDiscrete(x, y) {
         let h0 = h[i - 1];
         let h1 = h[i];
     
-         // Skip intervals where the difference is zero
-        if (h0 === 0.0 || h1 === 0.0) {
+         // If any interval have 0 verify which of the m have numeric value different than 0 and apply trapezoidal integration 
+         if (h0 === 0.0 || h1 === 0.0) {
+             
+            result += h0* (y[i] + y[i-1]) /2
+            result += h1* (y[i+1] + y[i]) /2
+
             continue;
+        
         }
 
         let hph = h1 + h0; 
@@ -147,7 +156,8 @@ export function simpsonIntegratorDiscrete(x, y) {
             result -= y[n - 2] * h1 ** 3 / (6 * h0 * (h0 + h1));
         }
      }
- 
+     console.log(result, h);
+     
      return result;
 
 }

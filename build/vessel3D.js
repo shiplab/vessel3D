@@ -41916,7 +41916,7 @@ class Scene extends Scene$1 {
         // Disable orbit controls when dragging
         this.dragControls.addEventListener('dragstart', function () {
             orbitControls.enabled = false;
-            
+						            
         });
 
         this.dragControls.addEventListener('dragend', function () {
@@ -41963,13 +41963,7 @@ class Scene extends Scene$1 {
         // TODO: length is a special case for javascript, 
         // maybe should be better to change to
         // something else @ferrari212.
-        const length = compartment["length"];
-        const width = compartment["width"];
-        const height = compartment["height"];
-
-        const xpos = compartment["xpos"];
-        const ypos = compartment["ypos"];
-        const zpos = compartment["zpos"];
+        const { length, width, height, xpos, ypos, zpos } = compartment;
         
         const geometry = new BoxGeometry(width, height, length);
         const material = new MeshBasicMaterial({ color: getRandomColor() });
