@@ -25,17 +25,18 @@ export class HullHydrostatics {
         }
 
         this.hull = hull
-        this.h = draft / hull.attributes.Depth
-
+        
         if(updateHydrostatic) {
             
-            this.updateHydrostatic()
+            this.updateHydrostatic(draft)
 
         }
     
     }
 
-    updateHydrostatic() {
+    updateHydrostatic(draft) {
+
+        this.h = draft / this.hull.attributes.Depth
         
         const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(this.hull, this.h) 
         

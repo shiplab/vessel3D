@@ -57,15 +57,16 @@ const hydrostaticTable = hydrostatics.retrieveHydrostaticCurves()
 // 4 - Initialize stability
 const stability = new HullStability(ship)
 const calculated_draft = stability.findDraft()
-console.log(calculated_draft);
-
-
+console.log("LCG: ", stability.LCG);
+console.log("KG: ", stability.KG);
+console.log("GM: ", stability.GM);
+console.log("Calculated Draft: ", calculated_draft);
 
 // Initialize dragControls
 scene.initializeDragControls()
 
 console.log(ship);
-console.log(hydrostatics);
+console.log(hydrostaticTable);
 
 
 // Render loop

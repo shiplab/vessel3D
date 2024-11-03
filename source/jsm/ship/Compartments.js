@@ -7,6 +7,7 @@ export class Compartments {
         xpos = 0,
         ypos = 0,
         zpos = 0,
+        cg = {x: undefined, y: undefined, z: undefined},
         density = 1025, // Default sault water, units in kg/m**3
         type = "compartment"
     } = {} ) {
@@ -18,18 +19,37 @@ export class Compartments {
             xpos,
             ypos,
             zpos,
+            cg,
             density,
             type
         }
 
         Object.assign(this, compartment)
+
         this._updateWeight()
+        this._updateCG()
 
     }
 
     _updateWeight() {
 
         this.weight = this.length * this.width * this.height * this.density
+
+    }
+
+    _updateCG() {
+
+        // If any of the values are undefined use the geometric center of
+        // the compartment.
+        if (Object.values(this.cg).some(c => c === undefined)) {
+
+            this.cg = {
+                x: this.length / 2,
+                y: this.width / 2,
+                z: this.height / 2,
+            }
+
+        }
 
     }
 

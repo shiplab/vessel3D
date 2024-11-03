@@ -4,14 +4,44 @@ export class WeightsAndCenters {
 
     constructor(ship) {
 
+        // Weights
+
         this.lightWeight = this.calculateLightWeight(ship)
         // TODO: Make the function for the Dead Weight
         // this.deadWeight = this.calculateDeadWeight(ship)
 
+        
         // Displacement is the sum of the lightship weight and deadweight.
         // this.displacement = this.lightWeight + this.deadWeight
         this.displacement = this.lightWeight * 9.81 // Newtons
         
+        // Centers
+        this.cg = this._updateCG(ship)
+
+        
+    }
+
+    _updateCG(ship) {
+        const attributes = ship.hull.attributes
+
+        // Approximating ship center as the half depth, beam and length
+        const cgShip = {
+            x: attributes.LOA / 2,
+            y: 0, // No acentric
+            z: attributes.Depth / 2
+        }
+
+        // TODO: Generalize function to non homogenous compartments
+        const cgCompartments = this.calculateCenter(ship.compartments, this.compartmentWeight)
+        
+        const cgResult = {
+            x: (cgShip.x * this.structureWeight + cgCompartments.x * this.compartmentWeight) / this.lightWeight,
+            y: (cgShip.y * this.structureWeight + cgCompartments.y * this.compartmentWeight) / this.lightWeight,
+            z: (cgShip.z * this.structureWeight + cgCompartments.z * this.compartmentWeight) / this.lightWeight
+        };
+
+        return cgResult
+
     }
 
     /**
@@ -28,8 +58,8 @@ export class WeightsAndCenters {
             throw new Error("Attribute 'structureWeight' is not defined in the hull object. Please, insert attribute for the stability calculation.")
         }
 
-        const structureWeight = ship.hull.structureWeight
-        weight += structureWeight
+        this.structureWeight = ship.hull.structureWeight
+        // weight += this.structureWeight
 
         // TODO: Make the application of the equipment weight
         // const equipmentWeight = ship.equipments.reduce((e, currentValue) => e.weight + currentValue)
@@ -38,8 +68,8 @@ export class WeightsAndCenters {
         // const engineWeight = ship.engine.reduce((e, currentValue) => e.weight + currentValue)
 
         // Calculate compartments weight
-        const compartmentWeight = ship.compartments.reduce((currentValue, c) => currentValue + c.weight, 0)
-        return structureWeight + compartmentWeight
+        this.compartmentWeight = this.sumWeight(ship.compartments)
+        return this.structureWeight + this.compartmentWeight
 
     }
 
@@ -98,7 +128,17 @@ export class WeightsAndCenters {
 
     sumWeight(array) {
         // Sum the weight of an array of objects, in which the object weight is defined
-        return array.reduce((arr, currentValue) => arr.weight + currentValue)
+        return array.reduce((currentValue, arr) => currentValue + arr.weight, 0)
+    }
+
+    calculateCenter(compartmentsArray, total_weight) {
+                
+        const x = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.xpos * arr.weight, 0) / total_weight
+        const y = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.ypos * arr.weight, 0) / total_weight
+        const z = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.zpos * arr.weight, 0) / total_weight
+
+        return {x, y, z}
+
     }
 
 }

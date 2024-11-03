@@ -156,7 +156,6 @@ export function simpsonIntegratorDiscrete(x, y) {
             result -= y[n - 2] * h1 ** 3 / (6 * h0 * (h0 + h1));
         }
      }
-     console.log(result, h);
      
      return result;
 

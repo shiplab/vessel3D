@@ -16,7 +16,14 @@ export class HullStability extends HullHydrostatics{
         super(ship.hull, DRAFT_BYPASS, false)
 
         this.weightsAndCenters = new WeightsAndCenters(ship)
-        this.lightWeight = this.lightWeight
+        this.lightWeight = this.weightsAndCenters.lightWeight
+
+        this.calculatedDraft = this.findDraft()
+        this.updateHydrostatic(this.calculatedDraft)
+
+        this.LCG = this.weightsAndCenters.cg.x
+        this.KG = this.weightsAndCenters.cg.z
+        this.GM = this.KB + this.BM - this.KG
 
     }
 
@@ -41,7 +48,7 @@ export class HullStability extends HullHydrostatics{
         if (index == undefined) throw new Error("Index from bisection section is undefined, potentially mean that the total weight will be to LOW for a draft search")
 
         const draft = lerp(draftArrays[index], draftArrays[index + 1], mu)
-        debugger
+
         return draft
 
     }
