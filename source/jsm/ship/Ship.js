@@ -45,9 +45,11 @@ export class Ship {
 
     }
 
-    calculateStability () {
-
+    initializeStability () {
         
+        if ( this.HullHydrostatics ) throw new Error( "Hydrostatics is a subclass of Stability. Therefore, no need for initializing hydrostatics 'shi.initializeHydrostatics()'." );
+
+        this.HullStability = new HullStability(this.ship)
 
     }
 

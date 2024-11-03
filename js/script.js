@@ -1,6 +1,7 @@
 import * as Vessel3D from "../source/vessel3D.js";
 
 import { HullHydrostatics as Hydrostatic } from "../source/jsm/physics/Hydrostatic.js";
+import { HullStability } from "../source/jsm/physics/Stability.js"
 
 const ship = new Vessel3D.Ship()
 
@@ -23,23 +24,22 @@ hull.halfBreadths = {
 }
 
 hull.attributes = {
-    "LOA": 22.5,
+    "LOA": 20,
     "BOA": 10,
     "Depth": 5,
     "APP": 0,
-    "hullStructureWeight": 800
+    "structureWeight": 100000 //kg
 }
 hull.style = {
     "upperColor": "yellow",
     "lowerColor": "green",
     "opacity": 0.5
 }
-hull.structureWeight = 800 //kg
 hull.design_draft = 3
 
 ship.addHull(hull)
 // ship.addCompartments({height: 20, xpos:0})
-ship.addCompartments({length: 20, xpos:10})
+ship.addCompartments({xpos:10, zpos:5, density: 100})
 // ship.addCompartments({width: 20, xpos:10})
 
 // 2 - Create a scene
@@ -50,8 +50,16 @@ scene.addAxesHelper()
 // 3 - Initialize hydrostatic
 // The hydrostatic can be created using the initialize hydrostatic command or can
 // be created independently
-ship.initializeHydrostatics()
-const hydrostatics = new Hydrostatic(hull, 3)
+// ship.initializeHydrostatics()
+const hydrostatics = new Hydrostatic(hull, 3, false)
+const hydrostaticTable = hydrostatics.retrieveHydrostaticCurves()
+
+// 4 - Initialize stability
+const stability = new HullStability(ship)
+const calculated_draft = stability.findDraft()
+console.log(calculated_draft);
+
+
 
 // Initialize dragControls
 scene.initializeDragControls()

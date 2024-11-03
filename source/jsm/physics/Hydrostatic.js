@@ -1,15 +1,19 @@
 import { simpsonIntegratorDiscrete, trapezoidalIntegratorCoefficients } from "../math/integration.js"
 import { lerp, bisectionSearch } from "../math/interpolation.js"
 import { geometricCenter, multiplyArrayByConst } from "../math/arrayOperations.js"
+import { linspace } from "../math/arrayOperations.js"
 
 export class HullHydrostatics {
 
-    constructor(hull, draft = undefined) {
+    constructor(hull, draft = undefined, updateHydrostatic = true) {
 
         if(draft === undefined) {
+
+
+            const WARN = "No draft defined, by pass to set the hydrostatic by the half draft." +
+                        "Alternatively, use the find draft using Hull Stability."
             
-            // calculate the draft by interpolation in case it is not found
-            // Step 1. Get all the weights
+            console.warn(WARN)
             
 
         }
@@ -20,13 +24,24 @@ export class HullHydrostatics {
 
         }
 
-        const h = draft / hull.attributes.Depth
+        this.hull = hull
+        this.h = draft / hull.attributes.Depth
 
+        if(updateHydrostatic) {
+            
+            this.updateHydrostatic()
 
-        const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(hull, h) 
+        }
+    
+    }
+
+    updateHydrostatic() {
+        
+        const { x, z, submerged_table, waterline_row } = this.interpolateWaterline(this.hull, this.h) 
         
         Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
-        
+            
+
     }
 
     interpolateWaterline(hull, h = 1) {
@@ -57,7 +72,7 @@ export class HullHydrostatics {
             // Reference in the center of the Ship, therefore multiply for BOA/2
             return multiplyArrayByConst(row, HALF_BREADTHS);
             
-        });        
+        }); 
         const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS)
         const stationPositions = multiplyArrayByConst(stations, LOA)
         const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth)
@@ -81,10 +96,17 @@ export class HullHydrostatics {
 
         // By pass in case the draft is equal to the depth
         if (h === 1) {
+
             
             const lastIndex = waterLines.length - 1
             
-            return { index: lastIndex, mu: 0, submergedWaterLines: waterLines, submergedTables: tables}               
+            return { 
+                index: lastIndex, 
+                mu: 0, 
+                submergedWaterLines: waterLines, 
+                submergedTables: tables,
+                interpolatedTableLine: tables[lastIndex]
+            }               
         }
         
         // Find the index and interpolation factor 'mu' for waterline height 'h'
@@ -120,7 +142,7 @@ export class HullHydrostatics {
         const wl_area = this.calculateWaterlineAreas(submergedTable, x)
         
         const volume = simpsonIntegratorDiscrete(z, wl_area)
-        const disp = 1025 * volume * 9.81
+        const disp = 1025 * volume * 9.81 // Displacement accounted in Newtons
         
         const KB = geometricCenter(wl_area, z)
         const LCB = geometricCenter(cs_area, x)
@@ -159,9 +181,34 @@ export class HullHydrostatics {
             return 2 * simpsonIntegratorDiscrete(x, row);
         });
     }
-    
-    
 
+    retrieveHydrostaticCurves(n = 19) {
+        // This function will calculate all the hydrostatic curves
+        // Function is relatively expensive from the computational perspective.
+        const draftsArray = linspace(0.1, 1.0, n)
+
+        const DEPTH = this.hull.attributes.Depth
+
+        const hydrostaticCurves = []
+
+        for (const d of draftsArray){
+
+            let { x, z, submerged_table, waterline_row } = this.interpolateWaterline(this.hull, d)
+
+            const draft = d * DEPTH
+
+            const hydrostatics = this.computeHydrostatics(x, z, submerged_table, waterline_row)
+
+            Object.assign(hydrostatics, {"draft": draft})
+
+            hydrostaticCurves.push(hydrostatics)
+        
+        }
+
+        return hydrostaticCurves
+
+    }
+    
     calculateStabilityFromScene(scene) {
 
         this.calculateStability()

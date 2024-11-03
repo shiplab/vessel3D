@@ -7,12 +7,10 @@ export class Compartments {
         xpos = 0,
         ypos = 0,
         zpos = 0,
-        density = 1025, // Default soult water
+        density = 1025, // Default sault water, units in kg/m**3
         type = "compartment"
     } = {} ) {
 
-        const weight = length * width * height * density
-        
         const compartment = {
             length,
             width,
@@ -21,11 +19,17 @@ export class Compartments {
             ypos,
             zpos,
             density,
-            weight,
             type
         }
 
         Object.assign(this, compartment)
+        this._updateWeight()
+
+    }
+
+    _updateWeight() {
+
+        this.weight = this.length * this.width * this.height * this.density
 
     }
 

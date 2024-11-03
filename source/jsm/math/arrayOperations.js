@@ -41,3 +41,13 @@ export function geometricCenter(array, x) {
 
 }
 
+export function linspace(startValue, stopValue, cardinality) {
+    // Similar to linear space from python and MATLAB
+    // Return a array with linear spaced elements
+    var arr = [];
+    var step = (stopValue - startValue) / (cardinality - 1);
+    for (var i = 0; i < cardinality; i++) {
+      arr.push(startValue + (step * i));
+    }
+    return arr;
+  }
