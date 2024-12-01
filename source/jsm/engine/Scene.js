@@ -2,9 +2,11 @@
 // import { Camera } from "../../libs/three.js";
 
 import * as THREE from "../../libs/three.js"
+import { HullStability } from "../physics/Stability.js"
 import { OrbitControls } from "../../libs/OrbitControls.js";
 import { DragControls } from "../../libs/DragControls.js";
 import { getRandomColor } from "../math/randomFunctions.js"
+import { Ocean } from "./Ocean.js";
 
 export class Scene extends THREE.Scene {
 
@@ -16,9 +18,16 @@ export class Scene extends THREE.Scene {
         // Setting the Z-Up reference system.
         THREE.Object3D.DefaultUp.set(0, 0, 1);
         this.zUpCont = new THREE.Group();
+        this.zUpCont.name = "zUpCont"
         this.zUpCont.rotation.x = -0.5 * Math.PI;
         this.add(this.zUpCont)
 
+        this.vesselGroup = new THREE.Group()
+        this.vesselGroup.name = "vesselGroup"
+        this.zUpCont.add(this.vesselGroup)
+
+        // Elements
+        this.ocean = undefined
         this.compartment_mesh = []
 
         this._init(spec);
@@ -53,8 +62,9 @@ export class Scene extends THREE.Scene {
 
         document.body.appendChild(this.renderer.domElement);
 
+        // Add hemisphere light
+        this.addToScene(new THREE.HemisphereLight(0xccccff, 0x666688, 1))
         
-    
     }
 
     _initializeDragControls(compartment) {
@@ -106,15 +116,42 @@ export class Scene extends THREE.Scene {
         
     }
 
+    addShipElement( element ) {
+
+        if(element.constructor.name == "Ship") {
+            
+            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
+        
+        }
+
+        this.vesselGroup.add(element)
+
+    }
+
     addShip( ship ) {
 
-        this.addToScene(ship.hull)
+        this.addShipElement(ship.hull)
         
         ship.compartments.forEach(compartment => {
 
             this.addCompartment(compartment)
         
         });
+
+        // Comment: the draft is calculated independently if the design_draft
+        // is provided or not. The ship is inserted on the scene
+        // with the origin in the center of gravity as default.
+        const stability = new HullStability(ship)
+        
+        // const DESIGN_DRAFT = 
+        // debugger
+
+        // this.vesselGroup.set(0.0, 0.0, 0.0)
+        this.vesselGroup.position.x = -stability.LCG
+        this.vesselGroup.position.y = 0.0
+        this.vesselGroup.position.z = -stability.calculatedDraft
+
+        // this.vesselGroup.translate(-stability.LCG, -stability.KG, 0)
 
     }
 
@@ -150,8 +187,29 @@ export class Scene extends THREE.Scene {
 
         this.compartment_mesh.push(compartment_mesh)
 
-        this.addToScene(compartment_mesh)
+        this.addShipElement(compartment_mesh)
 
+    }
+
+    addOcean( path = undefined, oceanSpec = {} ) {
+
+        this.ocean = new Ocean(path, oceanSpec)
+        this.addToScene(this.ocean)
+
+        if(!this.ocean.water.isWater) {
+
+            let grid = new THREE.GridHelper(1000, 100);
+			grid.rotation.x = 0.5 * Math.PI;
+			grid.position.z = 0.01;
+            
+            this.addToScene( grid );
+
+        }
+
+        let sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(-512, 246, 128);
+        this.addToScene(sun);
+    
     }
 
     addAxesHelper(size = 10) {

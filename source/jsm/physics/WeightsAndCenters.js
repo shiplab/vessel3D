@@ -132,6 +132,10 @@ export class WeightsAndCenters {
     }
 
     calculateCenter(compartmentsArray, total_weight) {
+
+        if(total_weight === 0.0) {
+            return {x: 0.0, y: 0.0, z: 0.0}
+        }
                 
         const x = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.xpos * arr.weight, 0) / total_weight
         const y = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.ypos * arr.weight, 0) / total_weight
