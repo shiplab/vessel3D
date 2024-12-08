@@ -47,7 +47,7 @@ ship.addHull();
 // ship.addCompartments({height: 20, xpos:0})
 ship.addCompartments({length: 2, width: 2, height: 2, xpos: 10, zpos: 5, density: 100});
 // ship.addCompartments({width: 20, xpos:10})
-debugger;
+
 // 2 - Create a scene with ocean
 const scene = new Vessel3D.Scene();
 scene.addShip(ship);

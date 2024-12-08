@@ -47,7 +47,6 @@ export class Ship {
         if (!["barge", "wigleyHull"].includes(hullName)) {
             throw new Error(`Predefined hullName = ${hullName} not defined in the list of predefined ships.`);
         }
-        debugger;
         return new Hull(PREDEFINED_HULLS[hullName]);
     }
 
