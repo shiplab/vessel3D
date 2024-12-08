@@ -2,10 +2,10 @@
 import * as THREE from "../Vessel3D/libs/three.js";
 // import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.module.js';
 
-import { DragControls } from "../Vessel3D/libs/DragControls.js"
+import {DragControls} from "../Vessel3D/libs/DragControls.js";
 
 // Importing the OrbitControls.js library
-import { OrbitControls } from "../Vessel3D/libs/OrbitControls.js";
+import {OrbitControls} from "../Vessel3D/libs/OrbitControls.js";
 
 // Create the scene, camera, and renderer
 const scene = new THREE.Scene();
@@ -20,7 +20,7 @@ const cubes = [];
 
 for (let i = 0; i < 3; i++) {
     const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
     const cube = new THREE.Mesh(geometry, material);
     cube.position.x = i * 2 - 2; // Spread cubes out on the X-axis
     scene.add(cube);
@@ -35,7 +35,6 @@ orbitControls.screenSpacePanning = false;
 orbitControls.minDistance = 2;
 orbitControls.maxDistance = 10;
 
-
 // Set the camera position
 camera.position.z = 5;
 
@@ -43,11 +42,11 @@ camera.position.z = 5;
 const dragControls = new DragControls(cubes, camera, renderer.domElement);
 
 // Optionally, you can listen to the drag events
-dragControls.addEventListener('dragstart', function (event) {
+dragControls.addEventListener("dragstart", function (event) {
     event.object.material.color.set(0xff0000); // Change color when dragging starts
 });
 
-dragControls.addEventListener('dragend', function (event) {
+dragControls.addEventListener("dragend", function (event) {
     event.object.material.color.set(0x00ff00); // Revert color when dragging ends
 });
 
@@ -59,13 +58,12 @@ function animate() {
 }
 
 // Disable orbit controls when dragging
-dragControls.addEventListener('dragstart', function () {
+dragControls.addEventListener("dragstart", function () {
     orbitControls.enabled = false;
 });
 
-dragControls.addEventListener('dragend', function () {
+dragControls.addEventListener("dragend", function () {
     orbitControls.enabled = true;
 });
-
 
 animate();

@@ -27,7 +27,8 @@ export class Ship {
 
         if (hull === undefined) {
             // Undefined hull will be assigned automatically to Wigley Hull
-            return this.getPredefinedHull(predefinedHullName);
+            this.hull = this.getPredefinedHull(predefinedHullName);
+            return this.hull;
         }
 
         if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft !== "number") {
@@ -46,6 +47,7 @@ export class Ship {
         if (!["barge", "wigleyHull"].includes(hullName)) {
             throw new Error(`Predefined hullName = ${hullName} not defined in the list of predefined ships.`);
         }
+        debugger;
         return new Hull(PREDEFINED_HULLS[hullName]);
     }
 

@@ -1,5 +1,4 @@
-
-const wigleyConstants = wigley_formula()
+const wigleyConstants = wigley_formula();
 
 function wigley_formula() {
     /*
@@ -18,74 +17,73 @@ function wigley_formula() {
     const stationSteps = 40;
 
     const halfBreadths = {
-        "waterlines": [],
-        "stations": [],
-        "table": [],
-    }
+        waterlines: [],
+        stations: [],
+        table: [],
+    };
 
     for (let i = 0; i <= waterLineSteps; i++) {
-        
         const wl = i / waterLineSteps;
-        halfBreadths.waterlines.push(wl)
+        halfBreadths.waterlines.push(wl);
 
-        const valuesArray = []
-        
+        const valuesArray = [];
+
         for (let j = 0; j <= stationSteps; j++) {
-
             const st = j / stationSteps;
-            
-            const y = (1 - ( 2 * (st - 0.5))** 2) * (1 - (wl - 1)** 2);
-    
-            valuesArray.push(y)
+
+            const y = (1 - (2 * (st - 0.5)) ** 2) * (1 - (wl - 1) ** 2);
+
+            valuesArray.push(y);
         }
 
-        halfBreadths.table.push(valuesArray)
+        halfBreadths.table.push(valuesArray);
     }
 
     halfBreadths.stations = Array.from({length: stationSteps + 1}, (_, j) => j / stationSteps);
 
-
-    return halfBreadths
-
+    return halfBreadths;
 }
 
 export const PREDEFINED_HULLS = {
     // ----------------------------------------- //
-    "barge": {
-        "halfBreadths": {        
-            "waterlines": [0, 0, 1],
-            "stations":[0, 1],
-            "table": [[0 , 0],[1 , 1],[1 , 1]],
+    barge: {
+        halfBreadths: {
+            waterlines: [0, 0, 1],
+            stations: [0, 1],
+            table: [
+                [0, 0],
+                [1, 1],
+                [1, 1],
+            ],
         },
-        "attributes": {
-            "LOA": 20,
-            "BOA": 10,
-            "Depth": 5,
-            "APP": 0,
-            "structureWeight": 200000 //kg
+        attributes: {
+            LOA: 20,
+            BOA: 10,
+            Depth: 5,
+            APP: 0,
+            structureWeight: 200000, //kg
         },
-        "style": {
-            "opacity": 0.5
+        style: {
+            opacity: 0.5,
         },
-        "design_draft" : 3
+        design_draft: 3,
     },
     // ----------------------------------------- //
-    "wigleyHull": {
-        "halfBreadths": {
-            "waterlines": wigleyConstants.waterlines,
-            "stations": wigleyConstants.stations,
-            "table": wigleyConstants.table,
+    wigleyHull: {
+        halfBreadths: {
+            waterlines: wigleyConstants.waterlines,
+            stations: wigleyConstants.stations,
+            table: wigleyConstants.table,
         },
-        "attributes": {
-            "LOA": 20,
-            "BOA": 10,
-            "Depth": 4,
-            "APP": 0,
-            "structureWeight": 50000 //kg
+        attributes: {
+            LOA: 20,
+            BOA: 10,
+            Depth: 4,
+            APP: 0,
+            structureWeight: 50000, //kg
         },
-        "style": {
-            "opacity": 0.5
-        }
-    }
-
-}
+        style: {
+            opacity: 0.5,
+        },
+    },
+};

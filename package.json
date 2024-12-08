@@ -1,39 +1,39 @@
 {
-  "name": "@shiplab/vessel3d",
-  "version": "0.0.3",
-  "description": "Library for conceptual ship visualization using as support Three.js library",
-  "main": "vessel3D.js",
-  "scripts": {
-    "build": "rollup -c utils/build/rollup.config.js --bundleConfigAsCjs",
-    "test": "jest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/shiplab/vessel3D.git"
-  },
-  "keywords": [
-    "ship",
-    "design",
-    "vessel",
-    "maritime",
-    "naval"
-  ],
-  "author": "ferrari212",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/shiplab/vessel3D/issues"
-  },
-  "homepage": "https://github.com/shiplab/vessel3D#readme",
-  "dependencies": {
-    "@rollup/plugin-commonjs": "^26.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "jest-environment-jsdom": "^29.7.0",
-    "rollup": "^4.21.3"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.4",
-    "babel-jest": "^29.7.0",
-    "jest": "^29.7.0"
-  }
+    "name": "@shiplab/vessel3d",
+    "version": "0.0.3",
+    "description": "Library for conceptual ship visualization using as support Three.js library",
+    "main": "vessel3D.js",
+    "scripts": {
+        "build": "rollup -c utils/build/rollup.config.js --bundleConfigAsCjs",
+        "test": "jest"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/shiplab/vessel3D.git"
+    },
+    "keywords": [
+        "ship",
+        "design",
+        "vessel",
+        "maritime",
+        "naval"
+    ],
+    "author": "ferrari212",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/shiplab/vessel3D/issues"
+    },
+    "homepage": "https://github.com/shiplab/vessel3D#readme",
+    "dependencies": {
+        "@rollup/plugin-commonjs": "^26.0.1",
+        "@rollup/plugin-terser": "^0.4.4",
+        "jest-environment-jsdom": "^29.7.0",
+        "rollup": "^4.21.3"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.25.2",
+        "@babel/preset-env": "^7.25.4",
+        "babel-jest": "^29.7.0",
+        "jest": "^29.7.0"
+    }
 }
