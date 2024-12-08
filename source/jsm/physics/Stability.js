@@ -17,7 +17,6 @@ export class HullStability extends HullHydrostatics{
 
         this.weightsAndCenters = new WeightsAndCenters(ship)
         this.lightWeight = this.weightsAndCenters.lightWeight
-
         this.calculatedDraft = this.findDraft()
         this.updateHydrostatic(this.calculatedDraft)
 

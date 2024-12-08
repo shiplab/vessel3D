@@ -3,6 +3,8 @@ import { Hull } from "./Hull.js"
 
 import { HullHydrostatics } from "../physics/Hydrostatic.js"
 
+import { PREDEFINED_HULLS } from "../database/predefinedHull.js"
+
 export class Ship {
 
     constructor( specification ) {
@@ -23,17 +25,28 @@ export class Ship {
 
     }
 
-    addHull (hull) {
+    addHull (hull = undefined, design_draft = undefined) {
 
-        if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
-        
-            throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
-        
+        if(hull === undefined) {
+            // Undefined hull will be assigned automatically to Wigley Hull
+
+            const HULL = PREDEFINED_HULLS["wigleyHull"]
+            this.hull = new Hull(HULL)
+
+            return this.hull
+            
         }
-
-        const design_draft = hull.hasOwnProperty('propertyName') ? hull.design_draft : undefined
+        
+        if(hull.hasOwnProperty('design_draft') && typeof hull.design_draft !== "number") {
+            
+            // Assign the design draft written in the hull object 
+            design_draft = hull.design_draft
+        
+        } 
 
         this.hull = new Hull(hull, design_draft)
+
+        return this.hull
 
     }
 

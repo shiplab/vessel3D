@@ -36,8 +36,13 @@ hull.style = {
 hull.design_draft = 3
 
 ship.addHull(hull)
+
+// 1.2 - There is the possibility to create a default hull as well by using:
+// ship.addHull()
+
+// 1.1 - Add compartments if you want, here are some examples:
 // ship.addCompartments({height: 20, xpos:0})
-// ship.addCompartments({length: 2, width: 2, height: 2, xpos:10, zpos:5, density: 100})
+ship.addCompartments({length: 2, width: 2, height: 2, xpos:10, zpos:5, density: 100})
 // ship.addCompartments({width: 20, xpos:10})
 
 // 2 - Create a scene with ocean

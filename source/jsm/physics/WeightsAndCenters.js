@@ -51,22 +51,23 @@ export class WeightsAndCenters {
      * @returns {number} The lightship weight in metric tons.
      */
     calculateLightWeight(ship) {
-
-        let weight = 0.0
         
         if(!ship.hull.hasOwnProperty("structureWeight")) {
             throw new Error("Attribute 'structureWeight' is not defined in the hull object. Please, insert attribute for the stability calculation.")
         }
 
+        if (ship.hull.structureWeight === undefined) {
+
+            throw new Error("Attribute 'structureWeight' is not defined in the hull object. Please, insert attribute for the stability calculation.")
+        
+        }
         this.structureWeight = ship.hull.structureWeight
-        // weight += this.structureWeight
 
         // TODO: Make the application of the equipment weight
         // const equipmentWeight = ship.equipments.reduce((e, currentValue) => e.weight + currentValue)
         
         // TODO: Make the application of the equipment weight
         // const engineWeight = ship.engine.reduce((e, currentValue) => e.weight + currentValue)
-
         // Calculate compartments weight
         this.compartmentWeight = this.sumWeight(ship.compartments)
         return this.structureWeight + this.compartmentWeight

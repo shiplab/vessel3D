@@ -2,6 +2,8 @@ import * as THREE from "../../libs/three.js"
 
 import { bisectionSearch, lerp } from "../math/interpolation.js";
 
+import { PREDEFINED_HULLS } from "../database/predefinedHull.js"
+
 
 export class Hull extends THREE.Group {
 
@@ -35,27 +37,7 @@ export class Hull extends THREE.Group {
         // wigley type hull
         if(hull == undefined) {
 
-            hull = {}
-
-            const halfBreadths = this.wigley_formula()
-
-            this.halfBreadths = {        
-                "waterlines": halfBreadths.waterlines,
-                "stations": halfBreadths.stations,
-                "table": halfBreadths.table,
-            }
-
-            this.attributes = {
-                "LOA": 20,
-                "BOA": 10,
-                "Depth": 4,
-                "APP": 0
-            }
-            this.style = {
-				"upperColor": "yellow",
-				"lowerColor": "green",
-				"opacity": 0.5
-			}
+            hull = PREDEFINED_HULLS["wigleyHull"]
 
         } else {
 			
@@ -422,55 +404,6 @@ export class Hull extends THREE.Group {
         let bhk = Object.keys( bhs );
 
 	}
-
-    wigley_formula() {
-        /*
-        This is a partial and simplified approach to the water lines using
-        the wrigley formulas.
-        The main goal is to use the Tiago formula in: http://shiplab.hials.org/app/shiplines/
-        However, this application would require more effort due to complex of the formulas used
-        
-        As a bypass for creating the features, the wigley formula as defined by:
-        https://kth.diva-portal.org/smash/get/diva2:1236507/FULLTEXT01.pdf
-        Chapter 2.5.1
-        The formula was modified for an non dimensional format
-        */
-    
-        const waterLineSteps = 20;
-        const stationSteps = 40;
-    
-        const halfBreadths = {
-            "waterlines": [],
-            "stations": [],
-            "table": [],
-        }
-    
-        for (let i = 0; i <= waterLineSteps; i++) {
-            
-            const wl = i / waterLineSteps;
-            halfBreadths.waterlines.push(wl)
-    
-            const valuesArray = []
-            
-            for (let j = 0; j <= stationSteps; j++) {
-    
-                const st = j / stationSteps;
-                
-                const y = (1 - ( 2 * (st - 0.5))** 2) * (1 - (wl - 1)** 2);
-        
-                valuesArray.push(y)
-            }
-    
-            halfBreadths.table.push(valuesArray)
-        }
-    
-        halfBreadths.stations = Array.from({length: stationSteps + 1}, (_, j) => j / stationSteps);
-    
-    
-        return halfBreadths
-    
-    }
-
 
 }
 
