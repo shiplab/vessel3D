@@ -45,7 +45,7 @@ ship.addHull();
 
 // 1.1 - Add compartments if you want, here are some examples:
 // ship.addCompartments({height: 20, xpos:0})
-ship.addCompartments({length: 2, width: 2, height: 2, xpos: 10, zpos: 5, density: 100});
+ship.addCompartments({length: 2, width: 2, height: 2, xpos: 10, ypos: 5, zpos: 5, density: 100});
 // ship.addCompartments({width: 20, xpos:10})
 
 // 2 - Create a scene with ocean
@@ -63,6 +63,7 @@ const hydrostaticTable = hydrostatics.retrieveHydrostaticCurves();
 
 // 4 - Initialize stability
 const stability = new HullStability(ship);
+const {phi, teta} = stability.calculateStaticalStability();
 console.log("LCG: ", stability.LCG);
 console.log("KG: ", stability.KG);
 console.log("GM: ", stability.GM);

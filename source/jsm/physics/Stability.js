@@ -19,8 +19,12 @@ export class HullStability extends HullHydrostatics {
         this.updateHydrostatic(this.calculatedDraft);
 
         this.LCG = this.weightsAndCenters.cg.x;
+        this.TCG = this.weightsAndCenters.cg.y;
         this.KG = this.weightsAndCenters.cg.z;
-        this.GM = this.KB + this.BM - this.KG;
+
+        const BG = this.KB - this.KG;
+        this.GM = this.BM - BG; // this.KB + this.BM - this.KG; the traditional equation (Birian eq. 2.20)
+        this.GML = this.BML - BG;
     }
 
     findDraft() {
@@ -44,5 +48,15 @@ export class HullStability extends HullHydrostatics {
         const draft = lerp(draftArrays[index], draftArrays[index + 1], mu);
 
         return draft;
+    }
+
+    calculateStaticalStability() {
+        // Obs: Only small angles implemented.
+        // TODO: Implement the case for large angles.
+
+        let phi = Math.atan(this.TCG / this.GM);
+        let teta = Math.atan((this.LCB - this.LCG) / this.GML);
+
+        return {phi, teta};
     }
 }

@@ -122,9 +122,7 @@ export class Scene extends THREE.Scene {
         // const DESIGN_DRAFT =
         // debugger
 
-        // this.vesselGroup.set(0.0, 0.0, 0.0)
-        this.vesselGroup.position.x = -stability.LCG;
-        this.vesselGroup.position.y = 0.0;
+        // Inserting ship in the position equals to 0
         this.vesselGroup.position.z = -stability.calculatedDraft;
 
         // this.vesselGroup.translate(-stability.LCG, -stability.KG, 0)

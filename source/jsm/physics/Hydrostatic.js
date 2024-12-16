@@ -122,6 +122,7 @@ export class HullHydrostatics {
         const TPC = (AWL * 1.025) / 100;
 
         const BM = IT / volume;
+        const BML = IL / volume;
 
         return {
             volume: volume,
@@ -135,6 +136,7 @@ export class HullHydrostatics {
             IL: IL,
             TPC: TPC,
             BM: BM,
+            BML: BML,
         };
     }
 
