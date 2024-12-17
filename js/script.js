@@ -74,6 +74,7 @@ scene.initializeDragControls();
 
 console.log(ship);
 console.log(hydrostaticTable);
+scene.trackCenters(stability);
 
 // Render loop
 function animate() {
