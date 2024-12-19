@@ -176,17 +176,4 @@ export class HullHydrostatics {
 
         return hydrostaticCurves;
     }
-
-    calculateStabilityFromScene(scene) {
-        this.calculateStability();
-    }
-
-    calculateStability(compartments = undefined) {
-        // There is two ways to asses the stability:
-        // First one is by giving the draft and calculate according
-        // to that or giving an extra step of calculating the drafit
-
-        if (compartments === undefined) {
-        }
-    }
 }
