@@ -2,13 +2,12 @@
 // import { Camera } from "../../libs/three.js";
 
 import * as THREE from "../../libs/three.js";
-import {Raycaster, Vector2} from "../../libs/three.js";
+
 import {HullStability} from "../physics/Stability.js";
 import {OrbitControls} from "../../libs/OrbitControls.js";
 import {DragControls} from "../../libs/DragControls.js";
 import {getRandomColor} from "../math/randomFunctions.js";
 import {Ocean} from "./Ocean.js";
-import {PANEL} from "../../../utils/panel.js";
 
 export class Scene extends THREE.Scene {
     constructor(spec) {
@@ -90,78 +89,6 @@ export class Scene extends THREE.Scene {
         this._initializeDragControls(this.compartment_mesh);
     }
 
-    trackCenters(stability) {
-        const raycaster = new Raycaster();
-        const camera = this.camera;
-        const objects = [];
-
-        // Create an info panel
-        const infoPanel = PANEL;
-        document.body.appendChild(infoPanel);
-
-        // create CG element
-        const GEOMETRY = new THREE.SphereGeometry(0.5, 32, 32);
-
-        const mesh_cg = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
-        const mesh_buoy = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
-        const mesh_bm = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
-
-        mesh_cg.material.color.set(0x00ff00);
-        mesh_buoy.material.color.set(0xff0000);
-        mesh_bm.material.color.set(0x0000ff);
-
-        mesh_cg.position.copy(stability.weightsAndCenters.cg);
-        mesh_buoy.position.copy({x: stability.LCB, y: stability.hull.position.y, z: stability.KB}); // ship is always symmetrical in this modeling
-        mesh_bm.position.copy({x: stability.LCB, y: stability.hull.position.y, z: stability.GM}); // ship is always symmetrical in this modeling
-
-        mesh_cg.userData = {name: "CG", position: mesh_cg.position};
-        mesh_buoy.userData = {name: "KB", position: mesh_buoy.position};
-        mesh_bm.userData = {name: "BM", position: mesh_bm.position};
-
-        objects.push(mesh_cg);
-        objects.push(mesh_buoy);
-        objects.push(mesh_bm);
-
-        this.addShipElement(mesh_cg);
-        this.addShipElement(mesh_buoy);
-        this.addShipElement(mesh_bm);
-
-        // Helper functions to show and hide the info panel
-        function showInfoPanel(intersectedObject, x, y) {
-            const {name, position} = intersectedObject.userData;
-            infoPanel.style.display = "block";
-            infoPanel.style.left = `${x + 10}px`;
-            infoPanel.style.top = `${y + 10}px`;
-            infoPanel.innerHTML = `<b>${name}</b><br>Position: (x: ${position.x.toFixed(2)}, y: ${position.y.toFixed(2)}, z: ${position.z.toFixed(
-                2
-            )})`;
-        }
-
-        function hideInfoPanel() {
-            infoPanel.style.display = "none";
-        }
-
-        // Handle mouse movement
-        function onMouseMove(event) {
-            const mouse = new Vector2();
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            const intersects = raycaster.intersectObjects(objects);
-            if (intersects.length > 0) {
-                showInfoPanel(intersects[0].object, event.clientX, event.clientY);
-            } else {
-                hideInfoPanel();
-            }
-        }
-
-        // Add an event listener for mouse movement
-        window.addEventListener("mousemove", onMouseMove);
-    }
-
     addToScene(element) {
         // This add element is a workaround for covering the difference in the coordinate
         // system between the traditional coordinate of system (x, y, z) in engineering and
@@ -194,7 +121,6 @@ export class Scene extends THREE.Scene {
         const stability = new HullStability(ship);
 
         // const DESIGN_DRAFT =
-        // debugger
 
         // Inserting ship in the position equals to 0
         this.vesselGroup.position.z = -stability.calculatedDraft;
@@ -221,6 +147,8 @@ export class Scene extends THREE.Scene {
         material.originalColor = material.color.getHexString();
 
         const compartment_mesh = new THREE.Mesh(geometry, material);
+
+        compartment_mesh.name = compartment.name;
 
         // Rotate to match ZUp reference
         compartment_mesh.rotation.set(Math.PI / 2, Math.PI / 2, 0);

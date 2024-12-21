@@ -3,7 +3,13 @@ export class WeightsAndCenters {
 
     constructor(ship) {
         // Weights
+        this._calculateWeights(ship);
 
+        // Centers
+        this._calculateCG(ship);
+    }
+
+    _calculateWeights(ship) {
         this.lightWeight = this.calculateLightWeight(ship);
         // TODO: Make the function for the Dead Weight
         // this.deadWeight = this.calculateDeadWeight(ship)
@@ -11,12 +17,9 @@ export class WeightsAndCenters {
         // Displacement is the sum of the lightship weight and deadweight.
         // this.displacement = this.lightWeight + this.deadWeight
         this.displacement = this.lightWeight * 9.81; // Newtons
-
-        // Centers
-        this.cg = this._updateCG(ship);
     }
 
-    _updateCG(ship) {
+    _calculateCG(ship) {
         const attributes = ship.hull.attributes;
 
         // Approximating ship center as the half depth, beam and length
@@ -35,7 +38,7 @@ export class WeightsAndCenters {
             z: (cgShip.z * this.structureWeight + cgCompartments.z * this.compartmentWeight) / this.lightWeight,
         };
 
-        return cgResult;
+        this.cg = cgResult;
     }
 
     /**

@@ -1,2 +1,4 @@
 package-lock.json
 node_modules
+source/jsm/math/rgi.js
+source/jsm/math/rgi.cpp

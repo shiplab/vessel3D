@@ -2,6 +2,7 @@ import * as Vessel3D from "../source/vessel3D.js";
 
 import {HullHydrostatics as Hydrostatic} from "../source/jsm/physics/Hydrostatic.js";
 import {HullStability} from "../source/jsm/physics/Stability.js";
+import {Controller} from "../source/jsm/engine/Controller.js";
 
 const ship = new Vessel3D.Ship();
 
@@ -45,7 +46,7 @@ ship.addHull();
 
 // 1.1 - Add compartments if you want, here are some examples:
 // ship.addCompartments({height: 20, xpos:0})
-ship.addCompartments({length: 2, width: 2, height: 2, xpos: 10, ypos: 5, zpos: 5, density: 100});
+ship.addCompartments({name: "test", length: 2, width: 2, height: 2, xpos: 10, ypos: 5, zpos: 5, density: 1000});
 // ship.addCompartments({width: 20, xpos:10})
 
 // 2 - Create a scene with ocean
@@ -63,18 +64,27 @@ const hydrostaticTable = hydrostatics.retrieveHydrostaticCurves();
 
 // 4 - Initialize stability
 const stability = new HullStability(ship);
-const {phi, teta} = stability.calculateStaticalStability();
+const {phi, theta} = stability.calculateStaticalStability();
+
+console.log(stability);
 console.log("LCG: ", stability.LCG);
 console.log("KG: ", stability.KG);
 console.log("GM: ", stability.GM);
-console.log("Calculated Draft: ", stability.calculatedDraft);
+console.log("Calculated Draft: ", phi);
+console.log("Trim angle: ", theta);
 
-// Initialize dragControls
+// test get compartment and modify it
+const compartment = ship.getCompartmentByName("test");
+compartment.xpos = 0;
+console.log(ship.compartments[0]);
 scene.initializeDragControls();
+
+const controller = new Controller(scene, stability);
+// Initialize dragControls
 
 console.log(ship);
 console.log(hydrostaticTable);
-scene.trackCenters(stability);
+controller.trackCenters();
 
 // Render loop
 function animate() {
