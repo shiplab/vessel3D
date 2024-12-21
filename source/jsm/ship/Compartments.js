@@ -1,3 +1,5 @@
+import {generateUUID} from "../../../utils/uuid.js";
+
 export class Compartments {
     constructor({
         length = 10,
@@ -8,6 +10,7 @@ export class Compartments {
         zpos = 0,
         cg = {x: undefined, y: undefined, z: undefined},
         density = 1025, // Default sault water, units in kg/m**3
+        name = undefined,
         type = "compartment",
     } = {}) {
         const compartment = {
@@ -19,10 +22,14 @@ export class Compartments {
             zpos,
             cg,
             density,
+            name,
             type,
         };
 
+        // Set the uuid as name in case it is not defined
         Object.assign(this, compartment);
+
+        this.name = name || generateUUID();
 
         this._updateWeight();
         this._updateCG();

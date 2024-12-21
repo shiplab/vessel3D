@@ -85,6 +85,18 @@ export class Ship {
         this.compartments.push(compartment);
     }
 
+    getCompartmentByName(name) {
+        if (!this.hull) throw new Error("Name variable not defined");
+
+        for (const compartment of this.compartments) {
+            if (compartment.name === name) {
+                return compartment;
+            }
+        }
+
+        throw new Error(`Name = ${name} not defined in the list of defined compartments.`);
+    }
+
     initializeDragControls() {
         this.scene._initializeDragControls(this.compartments);
     }
