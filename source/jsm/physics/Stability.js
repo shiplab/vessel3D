@@ -8,14 +8,25 @@ export class HullStability extends HullHydrostatics {
     // involved.
 
     constructor(ship) {
-        const hull = ship.hull;
-        const DRAFT_BYPASS = hull.attributes.Depth / 2;
+        const DRAFT_BYPASS = ship.hull.attributes.Depth / 2;
 
         super(ship.hull, DRAFT_BYPASS, false);
 
-        this.weightsAndCenters = new WeightsAndCenters(ship);
+        this.ship = ship;
+        this.weightsAndCenters = new WeightsAndCenters(this.ship);
         this.lightWeight = this.weightsAndCenters.lightWeight;
         this.calculatedDraft = this.findDraft();
+        this._updateCenters();
+    }
+
+    _updateStability() {
+        this.weightsAndCenters._calculateWeights(this.ship);
+        this.weightsAndCenters._calculateCG(this.ship);
+
+        this.calculatedDraft = this.findDraft();
+    }
+
+    _updateCenters() {
         this.updateHydrostatic(this.calculatedDraft);
 
         this.LCG = this.weightsAndCenters.cg.x;
