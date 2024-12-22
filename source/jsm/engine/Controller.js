@@ -6,6 +6,10 @@ import {PANEL} from "../../../utils/panel.js";
 
 export class Controller {
     constructor(scene, ...elements) {
+        if (!scene.constructor.name === "Scene") {
+            throw new Error("First attribute from controller must be valid Scene class.");
+        }
+
         this.scene = scene;
 
         // TODO: Generalize the control to general modifications of the elements
@@ -13,13 +17,10 @@ export class Controller {
             throw new Error("DragControls not defined");
         }
 
-        this.scene.dragControls.addEventListener("dragstart", function (event) {
-            console.log(event);
-        });
-
         // This function only apply only the function that are implemented in the controller
         const _ASSIGN_FUNC = {
-            HullStability: this.addStability,
+            Ship: this._addShip,
+            HullStability: this._addStability,
         };
 
         elements.forEach(e => {
@@ -44,7 +45,25 @@ export class Controller {
         });
     }
 
-    addStability(stability) {
+    _addShip(ship) {
+        this.ship = ship;
+
+        const SHIP = this.ship;
+
+        if (this.scene.dragControls) {
+            this.scene.dragControls.addEventListener("dragstart", function (event) {
+                // debugger;
+                console.log(event);
+                const OBJECT = event.object;
+                const compartment = SHIP.getCompartmentByName(OBJECT.name);
+                compartment.x = OBJECT.position.x;
+                compartment.y = OBJECT.position.y;
+                compartment.z = OBJECT.position.z;
+            });
+        }
+    }
+
+    _addStability(stability) {
         this.stability = stability;
     }
 

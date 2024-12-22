@@ -5,9 +5,9 @@ export class Compartments {
         length = 10,
         width = 10,
         height = 10,
-        xpos = 0,
-        ypos = 0,
-        zpos = 0,
+        x = 0,
+        y = 0,
+        z = 0,
         cg = {x: undefined, y: undefined, z: undefined},
         density = 1025, // Default sault water, units in kg/m**3
         name = undefined,
@@ -17,9 +17,6 @@ export class Compartments {
             length,
             width,
             height,
-            xpos,
-            ypos,
-            zpos,
             cg,
             density,
             name,
@@ -29,10 +26,37 @@ export class Compartments {
         // Set the uuid as name in case it is not defined
         Object.assign(this, compartment);
 
+        this.x = x;
+        this.y = y;
+        this.z = z;
+
         this.name = name || generateUUID();
 
         this._updateWeight();
         this._updateCG();
+    }
+
+    set x(value) {
+        this._xpos = value;
+    }
+    get x() {
+        return this._xpos;
+    }
+
+    set y(value) {
+        this._ypos = value;
+    }
+
+    get y() {
+        return this._ypos;
+    }
+
+    set z(value) {
+        this._zpos = value;
+    }
+
+    get z() {
+        return this._zpos;
     }
 
     _updateWeight() {

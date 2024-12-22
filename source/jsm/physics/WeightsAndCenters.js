@@ -120,9 +120,9 @@ export class WeightsAndCenters {
             return {x: 0.0, y: 0.0, z: 0.0};
         }
 
-        const x = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.xpos * arr.weight, 0) / total_weight;
-        const y = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.ypos * arr.weight, 0) / total_weight;
-        const z = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.zpos * arr.weight, 0) / total_weight;
+        const x = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.x * arr.weight, 0) / total_weight;
+        const y = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.y * arr.weight, 0) / total_weight;
+        const z = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.z * arr.weight, 0) / total_weight;
 
         return {x, y, z};
     }

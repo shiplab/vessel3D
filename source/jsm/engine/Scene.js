@@ -136,9 +136,9 @@ export class Scene extends THREE.Scene {
         const width = compartment["width"];
         const height = compartment["height"];
 
-        const xpos = compartment["xpos"];
-        const ypos = compartment["ypos"];
-        const zpos = compartment["zpos"];
+        const x = compartment["x"];
+        const y = compartment["y"];
+        const z = compartment["z"];
 
         const geometry = new THREE.BoxGeometry(width, height, length);
         const material = new THREE.MeshBasicMaterial({color: getRandomColor()});
@@ -153,7 +153,7 @@ export class Scene extends THREE.Scene {
         // Rotate to match ZUp reference
         compartment_mesh.rotation.set(Math.PI / 2, Math.PI / 2, 0);
 
-        compartment_mesh.position.set(xpos, ypos, zpos);
+        compartment_mesh.position.set(x, y, z);
 
         this.compartment_mesh.push(compartment_mesh);
 
