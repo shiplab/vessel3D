@@ -43,24 +43,33 @@ export class Controller {
                 console.error(`Error processing element: ${e}`, error.message);
             }
         });
+
+        this._applyEventListeners();
     }
 
-    _addShip(ship) {
-        this.ship = ship;
-
+    _applyEventListeners() {
         const SHIP = this.ship;
+        const STABILITY = this.stability;
 
         if (this.scene.dragControls) {
-            this.scene.dragControls.addEventListener("dragstart", function (event) {
-                // debugger;
-                console.log(event);
+            this.scene.dragControls.addEventListener("dragend", function (event) {
                 const OBJECT = event.object;
                 const compartment = SHIP.getCompartmentByName(OBJECT.name);
                 compartment.x = OBJECT.position.x;
                 compartment.y = OBJECT.position.y;
                 compartment.z = OBJECT.position.z;
+
+                if (STABILITY) {
+                    STABILITY._updateStability();
+                    const {phi, theta} = STABILITY.calculateStaticalStability();
+                    console.log("phi, theta", phi, theta);
+                }
             });
         }
+    }
+
+    _addShip(ship) {
+        this.ship = ship;
     }
 
     _addStability(stability) {

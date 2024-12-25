@@ -45,9 +45,9 @@ ship.addHull();
 // ship.addHull(undefined, {predefinedHullName: "barge"});
 
 // 1.1 - Add compartments if you want, here are some examples:
-// ship.addCompartments({height: 20, xpos:0})
-ship.addCompartments({name: "test", length: 2, width: 2, height: 2, xpos: 10, ypos: 5, zpos: 5, density: 1000});
-// ship.addCompartments({width: 20, xpos:10})
+// ship.addCompartments({height: 20, x:0})
+ship.addCompartments({name: "test", length: 2, width: 2, height: 2, x: 10, y: 5, z: 5, density: 1000});
+// ship.addCompartments({width: 20, x:10})
 
 // 2 - Create a scene with ocean
 const scene = new Vessel3D.Scene();
@@ -70,16 +70,12 @@ console.log(stability);
 console.log("LCG: ", stability.LCG);
 console.log("KG: ", stability.KG);
 console.log("GM: ", stability.GM);
-console.log("Calculated Draft: ", phi);
+console.log("Heel angle: ", phi);
 console.log("Trim angle: ", theta);
 
-// test get compartment and modify it
-const compartment = ship.getCompartmentByName("test");
-compartment.xpos = 0;
-console.log(ship.compartments[0]);
 scene.initializeDragControls();
 
-const controller = new Controller(scene, stability);
+const controller = new Controller(scene, ship, stability);
 // Initialize dragControls
 
 console.log(ship);

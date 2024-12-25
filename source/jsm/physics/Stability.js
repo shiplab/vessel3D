@@ -24,6 +24,8 @@ export class HullStability extends HullHydrostatics {
         this.weightsAndCenters._calculateCG(this.ship);
 
         this.calculatedDraft = this.findDraft();
+
+        this._updateCenters();
     }
 
     _updateCenters() {
@@ -66,8 +68,11 @@ export class HullStability extends HullHydrostatics {
         // TODO: Implement the case for large angles.
 
         let phi = Math.atan(this.TCG / this.GM);
-        let teta = Math.atan((this.LCB - this.LCG) / this.GML);
+        let theta = Math.atan((this.LCB - this.LCG) / this.GML);
 
-        return {phi, teta};
+        phi = Math.abs(phi) < 0.001 ? 0 : parseFloat(phi.toFixed(3));
+        theta = Math.abs(theta) < 0.001 ? 0 : parseFloat(theta.toFixed(3));
+
+        return {phi, theta};
     }
 }
