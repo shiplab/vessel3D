@@ -11,6 +11,7 @@ export class Controller {
         }
 
         this.scene = scene;
+        this.lockAngles = false;
 
         // TODO: Generalize the control to general modifications of the elements
         if (!this.scene.dragControls) {
@@ -66,9 +67,10 @@ export class Controller {
 
                 if (STABILITY) {
                     STABILITY._updateStability();
-                    const {heel, trim} = STABILITY.calculateStaticalStability();
 
-                    this.scene.shipRotation = STABILITY.calculateStaticalStability();
+                    if (!this.lockAngles) {
+                        this.scene.shipRotation = STABILITY.calculateStaticalStability();
+                    }
 
                     updateCenter(STABILITY);
                 }
