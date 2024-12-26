@@ -66,13 +66,12 @@ export class HullStability extends HullHydrostatics {
     calculateStaticalStability() {
         // Obs: Only small angles implemented.
         // TODO: Implement the case for large angles.
+        let heel = Math.atan(-this.TCG / this.GM);
+        let trim = Math.atan((this.LCG - this.LCB) / this.GML);
 
-        let phi = Math.atan(this.TCG / this.GM);
-        let theta = Math.atan((this.LCB - this.LCG) / this.GML);
+        heel = Math.abs(heel) < 0.001 ? 0 : parseFloat(heel.toFixed(3));
+        trim = Math.abs(trim) < 0.001 ? 0 : parseFloat(trim.toFixed(3));
 
-        phi = Math.abs(phi) < 0.001 ? 0 : parseFloat(phi.toFixed(3));
-        theta = Math.abs(theta) < 0.001 ? 0 : parseFloat(theta.toFixed(3));
-
-        return {phi, theta};
+        return {heel, trim};
     }
 }

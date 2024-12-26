@@ -50,21 +50,31 @@ export class Controller {
     _applyEventListeners() {
         const SHIP = this.ship;
         const STABILITY = this.stability;
+        const updateCenter = this.updateCenter.bind(this);
 
         if (this.scene.dragControls) {
-            this.scene.dragControls.addEventListener("dragend", function (event) {
+            this.dragStatus = false;
+            this.object = null;
+
+            const dragObject = event => {
                 const OBJECT = event.object;
                 const compartment = SHIP.getCompartmentByName(OBJECT.name);
+
                 compartment.x = OBJECT.position.x;
                 compartment.y = OBJECT.position.y;
                 compartment.z = OBJECT.position.z;
 
                 if (STABILITY) {
                     STABILITY._updateStability();
-                    const {phi, theta} = STABILITY.calculateStaticalStability();
-                    console.log("phi, theta", phi, theta);
+                    const {heel, trim} = STABILITY.calculateStaticalStability();
+
+                    this.scene.shipRotation = STABILITY.calculateStaticalStability();
+
+                    updateCenter(STABILITY);
                 }
-            });
+            };
+
+            this.scene.dragControls.addEventListener("drag", dragObject);
         }
     }
 
@@ -98,37 +108,25 @@ export class Controller {
         const raycaster = new Raycaster();
         const camera = this.scene.camera;
         const objects = [];
+        this.mesh_centers = {};
 
         // Create an info panel
         const infoPanel = PANEL;
         document.body.appendChild(infoPanel);
 
-        // create CG element
-        const GEOMETRY = new THREE.SphereGeometry(0.5, 32, 32);
+        this.mesh_centers.mesh_cg = new MeshCenterController("CG", 0x00ff00);
+        this.mesh_centers.mesh_buoy = new MeshCenterController("KB", 0xff0000);
+        this.mesh_centers.mesh_bm = new MeshCenterController("BM", 0xe6e6fa);
 
-        const mesh_cg = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
-        const mesh_buoy = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
-        const mesh_bm = new THREE.Mesh(GEOMETRY, new THREE.MeshBasicMaterial());
+        this.updateCenter(STABILITY);
 
-        mesh_cg.material.color.set(0x00ff00);
-        mesh_buoy.material.color.set(0xff0000);
-        mesh_bm.material.color.set(0x0000ff);
+        objects.push(this.mesh_centers.mesh_cg);
+        objects.push(this.mesh_centers.mesh_buoy);
+        objects.push(this.mesh_centers.mesh_bm);
 
-        mesh_cg.position.copy(STABILITY.weightsAndCenters.cg);
-        mesh_buoy.position.copy({x: STABILITY.LCB, y: STABILITY.hull.position.y, z: STABILITY.KB}); // ship is always symmetrical in this modeling
-        mesh_bm.position.copy({x: STABILITY.LCB, y: STABILITY.hull.position.y, z: STABILITY.GM}); // ship is always symmetrical in this modeling
-
-        mesh_cg.userData = {name: "CG", position: mesh_cg.position};
-        mesh_buoy.userData = {name: "KB", position: mesh_buoy.position};
-        mesh_bm.userData = {name: "BM", position: mesh_bm.position};
-
-        objects.push(mesh_cg);
-        objects.push(mesh_buoy);
-        objects.push(mesh_bm);
-
-        this.scene.addShipElement(mesh_cg);
-        this.scene.addShipElement(mesh_buoy);
-        this.scene.addShipElement(mesh_bm);
+        this.scene.addShipElement(this.mesh_centers.mesh_cg);
+        this.scene.addShipElement(this.mesh_centers.mesh_buoy);
+        this.scene.addShipElement(this.mesh_centers.mesh_bm);
 
         // Helper functions to show and hide the info panel
         function showInfoPanel(intersectedObject, x, y) {
@@ -164,5 +162,24 @@ export class Controller {
 
         // Add an event listener for mouse movement
         window.addEventListener("mousemove", onMouseMove);
+    }
+
+    updateCenter(stability) {
+        this.mesh_centers.mesh_cg.updatePosition(stability.weightsAndCenters.cg);
+        this.mesh_centers.mesh_buoy.updatePosition({x: stability.LCB, y: stability.hull.position.y, z: stability.KB}); // ship is always symmetrical in this modeling
+        this.mesh_centers.mesh_bm.updatePosition({x: stability.LCB, y: stability.hull.position.y, z: stability.GM}); // ship is always symmetrical in this modeling
+    }
+}
+
+class MeshCenterController extends THREE.Mesh {
+    constructor(name, color) {
+        super(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshBasicMaterial());
+
+        this.material.color.set(color);
+        this.userData = {name: name, position: this.position};
+    }
+
+    updatePosition(newPosition) {
+        this.position.copy(newPosition);
     }
 }

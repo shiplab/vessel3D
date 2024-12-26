@@ -24,11 +24,57 @@ export class Scene extends THREE.Scene {
         this.vesselGroup.name = "vesselGroup";
         this.zUpCont.add(this.vesselGroup);
 
+        // Storing the center of gravity and angles of the ship
+        this._shipCG = new THREE.Vector3();
+        this._shipRotation = new THREE.Euler();
+
         // Elements
         this.ocean = undefined;
         this.compartment_mesh = [];
 
         this._init(spec);
+    }
+
+    set shipCG(value) {
+        this._shipCG.setX(value.x);
+        this._shipCG.setY(value.y);
+        this._shipCG.setZ(value.z);
+    }
+
+    get shipCG() {
+        return this._shipCG.clone();
+    }
+
+    set shipRotation(value) {
+        // Try quaternion rotation in the future
+        const draft_translation = this.vesselGroup.position.clone().z;
+        const cg_position = this.shipCG;
+        // debugger;
+
+        const pivot = new THREE.Vector3(cg_position.x, cg_position.y, cg_position.z + draft_translation);
+        // console.log(pivot);
+
+        this.vesselGroup.position.add(pivot.clone().negate());
+
+        // Create a quaternion for the rotation
+        this._shipRotation.set(value.heel, value.trim, 0); // Yaw value is not considered
+
+        // Applying the rotation using quaternion
+        // var q = new THREE.Quaternion();
+        // q.setFromEuler(this._shipRotation);
+        // this.vesselGroup.applyQuaternion(q);
+
+        // Applying the rotation using Euler
+        this.vesselGroup.rotation.x = this._shipRotation.x;
+        this.vesselGroup.rotation.y = this._shipRotation.y;
+        this.vesselGroup.rotation.z = this._shipRotation.z;
+
+        // Translate the vesselGroup back
+        this.vesselGroup.position.add(pivot);
+    }
+
+    get shipRotation() {
+        return this._shipRotation.copy();
     }
 
     _init(spec) {
@@ -120,10 +166,11 @@ export class Scene extends THREE.Scene {
         // with the origin in the center of gravity as default.
         const stability = new HullStability(ship);
 
-        // const DESIGN_DRAFT =
-
         // Inserting ship in the position equals to 0
         this.vesselGroup.position.z = -stability.calculatedDraft;
+
+        this.shipCG = stability.weightsAndCenters.cg;
+        this.shipRotation = stability.calculateStaticalStability();
 
         // this.vesselGroup.translate(-stability.LCG, -stability.KG, 0)
     }
