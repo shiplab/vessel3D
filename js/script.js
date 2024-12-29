@@ -21,7 +21,7 @@ hull.halfBreadths = {
     stations: [0, 1],
     table: [
         [0, 0],
-        [1, 1],
+        [0.5, 0.5],
         [1, 1],
     ],
 };
@@ -38,10 +38,9 @@ hull.style = {
 };
 hull.design_draft = 3;
 
-// ship.addHull(hull);
-
 // 1.2 - There is the possibility to create a default hull as well by using:
 ship.addHull();
+// ship.addHull(hull);
 // ship.addHull(undefined, {predefinedHullName: "barge"});
 
 // 1.1 - Add compartments if you want, here are some examples:
