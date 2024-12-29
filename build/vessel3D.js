@@ -266,10 +266,10 @@ Object.assign(EventDispatcher.prototype, {
     },
 });
 
-const _lut = [];
+const _lut$1 = [];
 
 for (let i = 0; i < 256; i++) {
-    _lut[i] = (i < 16 ? "0" : "") + i.toString(16);
+    _lut$1[i] = (i < 16 ? "0" : "") + i.toString(16);
 }
 
 let _seed = 1234567;
@@ -286,26 +286,26 @@ const MathUtils = {
         const d2 = (Math.random() * 0xffffffff) | 0;
         const d3 = (Math.random() * 0xffffffff) | 0;
         const uuid =
-            _lut[d0 & 0xff] +
-            _lut[(d0 >> 8) & 0xff] +
-            _lut[(d0 >> 16) & 0xff] +
-            _lut[(d0 >> 24) & 0xff] +
+            _lut$1[d0 & 0xff] +
+            _lut$1[(d0 >> 8) & 0xff] +
+            _lut$1[(d0 >> 16) & 0xff] +
+            _lut$1[(d0 >> 24) & 0xff] +
             "-" +
-            _lut[d1 & 0xff] +
-            _lut[(d1 >> 8) & 0xff] +
+            _lut$1[d1 & 0xff] +
+            _lut$1[(d1 >> 8) & 0xff] +
             "-" +
-            _lut[((d1 >> 16) & 0x0f) | 0x40] +
-            _lut[(d1 >> 24) & 0xff] +
+            _lut$1[((d1 >> 16) & 0x0f) | 0x40] +
+            _lut$1[(d1 >> 24) & 0xff] +
             "-" +
-            _lut[(d2 & 0x3f) | 0x80] +
-            _lut[(d2 >> 8) & 0xff] +
+            _lut$1[(d2 & 0x3f) | 0x80] +
+            _lut$1[(d2 >> 8) & 0xff] +
             "-" +
-            _lut[(d2 >> 16) & 0xff] +
-            _lut[(d2 >> 24) & 0xff] +
-            _lut[d3 & 0xff] +
-            _lut[(d3 >> 8) & 0xff] +
-            _lut[(d3 >> 16) & 0xff] +
-            _lut[(d3 >> 24) & 0xff];
+            _lut$1[(d2 >> 16) & 0xff] +
+            _lut$1[(d2 >> 24) & 0xff] +
+            _lut$1[d3 & 0xff] +
+            _lut$1[(d3 >> 8) & 0xff] +
+            _lut$1[(d3 >> 16) & 0xff] +
+            _lut$1[(d3 >> 24) & 0xff];
 
         // .toUpperCase() here flattens concatenated strings to save heap memory space.
         return uuid.toUpperCase();
@@ -32829,6 +32829,539 @@ if (typeof window !== "undefined") {
     }
 }
 
+class WeightsAndCenters {
+    // Class ot store all the centers and weights from the ship
+
+    constructor(ship) {
+        // Weights
+        this._calculateWeights(ship);
+
+        // Centers
+        this._calculateCG(ship);
+    }
+
+    _calculateWeights(ship) {
+        this.lightWeight = this.calculateLightWeight(ship);
+        // TODO: Make the function for the Dead Weight
+        // this.deadWeight = this.calculateDeadWeight(ship)
+
+        // Displacement is the sum of the lightship weight and deadweight.
+        // this.displacement = this.lightWeight + this.deadWeight
+        this.displacement = this.lightWeight * 9.81; // Newtons
+    }
+
+    _calculateCG(ship) {
+        const attributes = ship.hull.attributes;
+
+        // Approximating ship center as the half depth, beam and length
+        const cgShip = {
+            x: attributes.LOA / 2,
+            y: 0, // No acentric
+            z: attributes.Depth / 2,
+        };
+
+        // TODO: Generalize function to non homogenous compartments
+        const cgCompartments = this.calculateCenter(ship.compartments, this.compartmentWeight);
+
+        const cgResult = {
+            x: (cgShip.x * this.structureWeight + cgCompartments.x * this.compartmentWeight) / this.lightWeight,
+            y: (cgShip.y * this.structureWeight + cgCompartments.y * this.compartmentWeight) / this.lightWeight,
+            z: (cgShip.z * this.structureWeight + cgCompartments.z * this.compartmentWeight) / this.lightWeight,
+        };
+
+        this.cg = cgResult;
+    }
+
+    /**
+     * Calculates the lightship weight of the ship.
+     * The lightship weight includes the weight of the hull, engine, equipment,
+     * and any permanent structures.
+     * @returns {number} The lightship weight in metric tons.
+     */
+    calculateLightWeight(ship) {
+        if (!ship.hull.hasOwnProperty("structureWeight")) {
+            throw new Error("Attribute 'structureWeight' is not defined in the hull object. Please, insert attribute for the stability calculation.");
+        }
+
+        if (ship.hull.structureWeight === undefined) {
+            throw new Error("Attribute 'structureWeight' is not defined in the hull object. Please, insert attribute for the stability calculation.");
+        }
+        this.structureWeight = ship.hull.structureWeight;
+
+        // TODO: Make the application of the equipment weight
+        // const equipmentWeight = ship.equipments.reduce((e, currentValue) => e.weight + currentValue)
+
+        // TODO: Make the application of the equipment weight
+        // const engineWeight = ship.engine.reduce((e, currentValue) => e.weight + currentValue)
+        // Calculate compartments weight
+        this.compartmentWeight = this.sumWeight(ship.compartments);
+        return this.structureWeight + this.compartmentWeight;
+    }
+
+    /**
+     * Calculates the deadweight of the ship.
+     * Deadweight is the difference between the fully loaded displacement
+     * and the lightship weight, representing the ship's carrying capacity.
+     * @returns {number} The deadweight in metric tons.
+     */
+    calculateDeadWeight(ship) {
+        const cargoWeight = this.sumWeight(ship.cargoCompartments);
+        const fuelWeight = this.sumWeight(ship.fuelCompartments);
+        const freshWaterWeight = this.sumWeight(ship.freshWaterCompartments);
+
+        return cargoWeight + fuelWeight + freshWaterWeight;
+    }
+
+    /**
+     * Calculates the weight of the cargo.
+     * This may involve using the cargo manifest data or calculating based
+     * on cargo volume and density.
+     * @param {number} volume - The volume of the cargo in cubic meters.
+     * @param {number} density - The density of the cargo in metric tons per cubic meter.
+     * @returns {number} The cargo weight in metric tons.
+     */
+    calculateCargoWeight() {}
+
+    /**
+     * Calculates the fuel weight based on the tank volume and fuel density.
+     * @param {number} tankVolume - The volume of the fuel tank in cubic meters.
+     * @param {number} fuelDensity - The density of the fuel in metric tons per cubic meter.
+     * @returns {number} The fuel weight in metric tons.
+     */
+    calculateFuelWeight() {}
+
+    /**
+     * Calculates the total weight of the ship.
+     * This is the sum of lightship weight, cargo weight, fuel weight, and ballast weight.
+     * @param {number} lightshipWeight - The lightship weight in metric tons.
+     * @param {number} cargoWeight - The cargo weight in metric tons.
+     * @param {number} fuelWeight - The fuel weight in metric tons.
+     * @param {number} ballastWeight - The ballast weight in metric tons.
+     * @returns {number} The total weight of the ship in metric tons.
+     */
+    calculateTotalWeight() {}
+
+    sumWeight(array) {
+        // Sum the weight of an array of objects, in which the object weight is defined
+        return array.reduce((currentValue, arr) => currentValue + arr.weight, 0);
+    }
+
+    calculateCenter(compartmentsArray, total_weight) {
+        if (total_weight === 0.0) {
+            return {x: 0.0, y: 0.0, z: 0.0};
+        }
+
+        const x = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.x * arr.weight, 0) / total_weight;
+        const y = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.y * arr.weight, 0) / total_weight;
+        const z = compartmentsArray.reduce((currentValue, arr) => currentValue + arr.z * arr.weight, 0) / total_weight;
+
+        return {x, y, z};
+    }
+}
+
+function sumArray(array) {
+    return array.reduce((accumulator, currentValue) => accumulator + currentValue);
+}
+
+function multiplyArrayByConst(array, C) {
+    return array.map(v => v * C);
+}
+
+function geometricCenter(array, x) {
+    // Multiplying the last and first values of the array by half improve the numerical precision.
+    // This value is derived from the trapezoidal multiplier on the extremes
+    // Increase the error if the spaces are not evenly spaced.
+    // This method is also, more efficient than reintegrate the volumes twice. @Ferrari212
+    const LEN = array.length;
+    array[LEN - 1] = 0.5 * array[LEN - 1];
+    array[0] = 0.5 * array[0];
+
+    const SUM = sumArray(array);
+
+    return array.reduce((accumulator, currentValue, index) => accumulator + currentValue * x[index], 0) / SUM;
+
+    // Possible the integration will give it more correctly, value tried but strange division encountered
+    // const product = productArray(array, x)
+    // const MOMENT = simpsonIntegratorDiscrete(product, x)
+    // const INTEGRAL = simpsonIntegratorDiscrete(array, x)
+
+    // return MOMENT / INTEGRAL
+}
+
+function linspace(startValue, stopValue, cardinality) {
+    // Similar to linear space from python and MATLAB
+    // Return a array with linear spaced elements
+    var arr = [];
+    var step = (stopValue - startValue) / (cardinality - 1);
+    for (var i = 0; i < cardinality; i++) {
+        arr.push(startValue + step * i);
+    }
+    return arr;
+}
+
+function trapezoidalIntegratorCoefficients(x, y) {
+    // From table 4.1 Birian
+    // Different from the example on Birian, the half breadth is already scaled
+    const N = x.length;
+
+    if (N < 2) {
+        throw new Error("At least two data points are required.");
+    }
+
+    let h = x[1] - x[0]; // Assuming equally spaced points
+
+    let multiplier = Array(N).fill(1.0);
+    multiplier[0] = multiplier[N - 1] = 0.5;
+
+    // Create the storage of coefficients
+    let func_areas = [],
+        func_moments = [],
+        fm_long = [],
+        fm_trans = [];
+
+    for (let i = 0; i < N; i++) {
+        const fa = multiplier[i] * y[i];
+        const fm = fa * x[i];
+        const fm_l = fm * x[i];
+        const fm_t = multiplier[i] * y[i] * y[i] * y[i];
+
+        func_areas.push(fa);
+        func_moments.push(fm);
+        fm_long.push(fm_l);
+        fm_trans.push(fm_t);
+    }
+
+    const func_of_areas = sumArray(func_areas);
+    const func_of_moments = sumArray(func_moments);
+    const func_of_ix = sumArray(fm_long);
+    const func_of_it = sumArray(fm_trans);
+
+    const AWL = 2 * h * func_of_areas;
+    const LCF = func_of_moments / func_of_areas;
+    const IT = (2 / 3) * func_of_it * h;
+    const Iy = 2 * func_of_ix * h;
+    const IL = Iy - Math.pow(LCF, 2) * AWL;
+
+    return {
+        AWL: AWL,
+        LCF: LCF,
+        IT: IT,
+        Iy: Iy,
+        IL: IL,
+    };
+}
+
+function simpsonIntegratorDiscrete(x, y) {
+    // Equivalent from the Composite Simpson's rule for irregularly spaced data
+    // "https://en.wikipedia.org/wiki/Simpson's_rule" for python
+
+    const n = x.length - 1;
+
+    if (n < 1) {
+        throw new Error("At least two data points are required.");
+    }
+
+    if (n != y.length - 1) {
+        throw new Error("x and y must be from the same size");
+    }
+
+    if (n === 1) {
+        // If there's only one interval, just use the trapezoidal rule
+        const h = x[1] - x[0];
+        return (h * (y[0] + y[1])) / 2;
+    }
+
+    // Calculate h as the difference between consecutive x values
+    let h = [];
+    for (let i = 0; i < n; i++) {
+        h.push(x[i + 1] - x[i]);
+    }
+
+    let result = 0.0;
+
+    for (let i = 1; i < n; i += 2) {
+        let h0 = h[i - 1];
+        let h1 = h[i];
+
+        // If any interval have 0 verify which of the m have numeric value different than 0 and apply trapezoidal integration
+        if (h0 === 0.0 || h1 === 0.0) {
+            result += (h0 * (y[i] + y[i - 1])) / 2;
+            result += (h1 * (y[i + 1] + y[i])) / 2;
+
+            continue;
+        }
+
+        let hph = h1 + h0;
+        let hdh = h1 / h0;
+        let hmh = h1 * h0;
+
+        result += (hph / 6) * ((2 - hdh) * y[i - 1] + (hph ** 2 / hmh) * y[i] + (2 - 1 / hdh) * y[i + 1]);
+    }
+
+    if (n % 2 === 1) {
+        let h0 = h[n - 2];
+        let h1 = h[n - 1];
+
+        // Skip the last interval if any difference is zero
+        if (h0 !== 0 && h1 !== 0) {
+            result += (y[n] * (2 * h1 ** 2 + 3 * h0 * h1)) / (6 * (h0 + h1));
+            result += (y[n - 1] * (h1 ** 2 + 3 * h1 * h0)) / (6 * h0);
+            result -= (y[n - 2] * h1 ** 3) / (6 * h0 * (h0 + h1));
+        }
+    }
+
+    return result;
+}
+
+class HullHydrostatics {
+    constructor(hull, draft = undefined, updateHydrostatic = true) {
+        if (draft === undefined) {
+            const WARN =
+                "No draft defined, by pass to set the hydrostatic by the half draft." + "Alternatively, use the find draft using Hull Stability.";
+
+            console.warn(WARN);
+        }
+
+        if (draft > hull.attributes.Depth) {
+            throw new Error("Design draft is bigger than the depth which is realistically impossible.");
+        }
+
+        this.hull = hull;
+
+        if (updateHydrostatic) {
+            this.updateHydrostatic(draft);
+        }
+    }
+
+    updateHydrostatic(draft) {
+        this.h = draft / this.hull.attributes.Depth;
+
+        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, this.h);
+
+        Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
+    }
+
+    interpolateWaterline(hull, h = 1) {
+        // Get the hull geometry's port side surface
+        const waterLines = hull.halfBreadths.waterlines;
+        const stations = hull.halfBreadths.stations;
+        const table = hull.halfBreadths.table;
+
+        // Extract the geometry tables and hull dimensions
+        const LOA = hull.attributes.LOA; // Length Overall
+        const Depth = hull.attributes.Depth; // Depth
+        const BOA = hull.attributes.BOA; // BOA
+
+        const HALF_BREADTHS = BOA / 2;
+
+        // Find the parameters and the submerged waterlines and half breadths tables
+        const {submergedWaterLines, submergedTables, interpolatedTableLine} = this.takeSubmergedTables(waterLines, table, h);
+
+        // Scaling the submerged tables
+        const slicedTables = submergedTables.map(row => {
+            // Reference in the center of the Ship, therefore multiply for BOA/2
+            return multiplyArrayByConst(row, HALF_BREADTHS);
+        });
+        const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS);
+        const stationPositions = multiplyArrayByConst(stations, LOA);
+        const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth);
+
+        return {
+            x: stationPositions,
+            z: scaledWaterlines,
+            submerged_table: slicedTables,
+            waterline_row: interpolatedWaterlineRow,
+        };
+    }
+
+    /**
+     *
+     * @param {Array.<number>} waterLines
+     * @param {number} h Location of the water line relative to the Depth. h = 1 for draft equals to the Depth
+     * @returns
+     */
+    takeSubmergedTables(waterLines, tables, h) {
+        // By pass in case the draft is equal to the depth
+        if (h === 1) {
+            const lastIndex = waterLines.length - 1;
+
+            return {
+                index: lastIndex,
+                mu: 0,
+                submergedWaterLines: waterLines,
+                submergedTables: tables,
+                interpolatedTableLine: tables[lastIndex],
+            };
+        }
+
+        // Find the index and interpolation factor 'mu' for waterline height 'h'
+        const {index, mu} = bisectionSearch(waterLines, h);
+
+        const submergedWaterLines = waterLines.slice(0, index + 1);
+
+        const submergedTables = tables.slice(0, submergedWaterLines.length);
+
+        // Complete tables by applying a linear interpolation in the last height before the waterline
+        const lastTableLine = tables[index];
+        const nextTableLine = tables[index + 1];
+        const interpolatedTableLine = lastTableLine.map((value, i) => {
+            return lerp(value, nextTableLine[i], mu);
+        });
+
+        submergedTables.push(interpolatedTableLine);
+        submergedWaterLines.push(h);
+
+        return {index, mu, submergedWaterLines, submergedTables, interpolatedTableLine};
+    }
+
+    computeHydrostatics(x, z, submergedTable, waterlineRow) {
+        // Cross-section areas
+        const cs_area = this.calculateCrossSectionAreas(submergedTable, z);
+
+        // Waterline areas
+        const wl_area = this.calculateWaterlineAreas(submergedTable, x);
+
+        const volume = simpsonIntegratorDiscrete(z, wl_area);
+        const disp = 1025 * volume * 9.81; // Displacement accounted in Newtons
+
+        const KB = geometricCenter(wl_area, z);
+        const LCB = geometricCenter(cs_area, x);
+
+        const {AWL, LCF, IT, Iy, IL} = trapezoidalIntegratorCoefficients(x, waterlineRow);
+
+        const TPC = (AWL * 1.025) / 100;
+
+        const BM = IT / volume;
+        const BML = IL / volume;
+
+        return {
+            volume: volume,
+            disp: disp,
+            KB: KB,
+            LCB: LCB,
+            AWL: AWL,
+            LCF: LCF,
+            IT: IT,
+            Iy: Iy,
+            IL: IL,
+            TPC: TPC,
+            BM: BM,
+            BML: BML,
+        };
+    }
+
+    calculateCrossSectionAreas(submergedTable, z) {
+        return submergedTable[0].map((_, i) => {
+            const yi = submergedTable.map(row => row[i]);
+            return 2 * simpsonIntegratorDiscrete(z, yi);
+        });
+    }
+
+    calculateWaterlineAreas(submergedTable, x) {
+        return submergedTable.map(row => {
+            return 2 * simpsonIntegratorDiscrete(x, row);
+        });
+    }
+
+    retrieveHydrostaticCurves(n = 19) {
+        // This function will calculate all the hydrostatic curves
+        // Function is relatively expensive from the computational perspective.
+        const draftsArray = linspace(0.1, 1.0, n);
+
+        const DEPTH = this.hull.attributes.Depth;
+
+        const hydrostaticCurves = [];
+
+        for (const d of draftsArray) {
+            let {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, d);
+
+            const draft = d * DEPTH;
+
+            const hydrostatics = this.computeHydrostatics(x, z, submerged_table, waterline_row);
+
+            Object.assign(hydrostatics, {draft: draft});
+
+            hydrostaticCurves.push(hydrostatics);
+        }
+
+        return hydrostaticCurves;
+    }
+}
+
+let HullStability$1 = class HullStability extends HullHydrostatics {
+    // NOTE: (@Ferrari212) Hull stability will need the ship in this case
+    // That assumption was chosen because of the multitude of variables
+    // involved.
+
+    constructor(ship) {
+        const DRAFT_BYPASS = ship.hull.attributes.Depth / 2;
+
+        super(ship.hull, DRAFT_BYPASS, false);
+
+        this.ship = ship;
+        this.weightsAndCenters = new WeightsAndCenters(this.ship);
+        this.lightWeight = this.weightsAndCenters.lightWeight;
+        this.calculatedDraft = this.findDraft();
+        this._updateCenters();
+    }
+
+    _updateStability() {
+        this.weightsAndCenters._calculateWeights(this.ship);
+        this.weightsAndCenters._calculateCG(this.ship);
+
+        this.calculatedDraft = this.findDraft();
+
+        this._updateCenters();
+    }
+
+    _updateCenters() {
+        this.updateHydrostatic(this.calculatedDraft);
+
+        this.LCG = this.weightsAndCenters.cg.x;
+        this.TCG = this.weightsAndCenters.cg.y;
+        this.KG = this.weightsAndCenters.cg.z;
+
+        const BG = this.KB - this.KG;
+        this.GM = this.BM - BG; // this.KB + this.BM - this.KG; the traditional equation (Birian eq. 2.20)
+        this.GML = this.BML - BG;
+    }
+
+    findDraft() {
+        const hydrostaticTable = this.retrieveHydrostaticCurves();
+
+        const draftArrays = [];
+        const displacementsArray = [];
+
+        for (const table of hydrostaticTable) {
+            draftArrays.push(table.draft);
+            displacementsArray.push(table.disp);
+        }
+
+        const DISP = this.weightsAndCenters.displacement;
+
+        const {index, mu} = bisectionSearch(displacementsArray, DISP);
+
+        if (index == undefined)
+            throw new Error("Index from bisection section is undefined, potentially mean that the total weight will be to LOW for a draft search");
+
+        const draft = lerp(draftArrays[index], draftArrays[index + 1], mu);
+
+        return draft;
+    }
+
+    calculateStaticalStability() {
+        // Obs: Only small angles implemented.
+        // TODO: Implement the case for large angles.
+        let heel = Math.atan(-this.TCG / this.GM);
+        let trim = Math.atan((this.LCG - this.LCB) / this.GML);
+
+        heel = Math.abs(heel) < 0.001 ? 0 : parseFloat(heel.toFixed(3));
+        trim = Math.abs(trim) < 0.001 ? 0 : parseFloat(trim.toFixed(3));
+
+        return {heel, trim};
+    }
+};
+
 // This set of controls performs orbiting, dollying (zooming), and panning.
 // Unlike TrackballControls, it maintains the "up" direction object.up (+Y by default).
 //
@@ -34016,8 +34549,584 @@ function getRandomColor() {
     return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
 }
 
+/**
+ * Work based on :
+ * https://github.com/Slayvin: Flat mirror for three.js
+ * https://home.adelphi.edu/~stemkoski/ : An implementation of water shader based on the flat mirror
+ * http://29a.ch/ && http://29a.ch/slides/2012/webglwater/ : Water shader explanations in WebGL
+ */
+
+class Water extends Mesh {
+    constructor(geometry, options = {}) {
+        super(geometry);
+
+        this.isWater = true;
+
+        const scope = this;
+
+        const textureWidth = options.textureWidth !== undefined ? options.textureWidth : 512;
+        const textureHeight = options.textureHeight !== undefined ? options.textureHeight : 512;
+
+        const clipBias = options.clipBias !== undefined ? options.clipBias : 0.0;
+        const alpha = options.alpha !== undefined ? options.alpha : 1.0;
+        const time = options.time !== undefined ? options.time : 0.0;
+        const normalSampler = options.waterNormals !== undefined ? options.waterNormals : null;
+        const sunDirection = options.sunDirection !== undefined ? options.sunDirection : new Vector3(0.70707, 0.70707, 0.0);
+        const sunColor = new Color(options.sunColor !== undefined ? options.sunColor : 0xffffff);
+        const waterColor = new Color(options.waterColor !== undefined ? options.waterColor : 0x7f7f7f);
+        const eye = options.eye !== undefined ? options.eye : new Vector3(0, 0, 0);
+        const distortionScale = options.distortionScale !== undefined ? options.distortionScale : 20.0;
+        const side = options.side !== undefined ? options.side : FrontSide;
+        const fog = options.fog !== undefined ? options.fog : false;
+
+        //
+
+        const mirrorPlane = new Plane();
+        const normal = new Vector3();
+        const mirrorWorldPosition = new Vector3();
+        const cameraWorldPosition = new Vector3();
+        const rotationMatrix = new Matrix4();
+        const lookAtPosition = new Vector3(0, 0, -1);
+        const clipPlane = new Vector4();
+
+        const view = new Vector3();
+        const target = new Vector3();
+        const q = new Vector4();
+
+        const textureMatrix = new Matrix4();
+
+        const mirrorCamera = new PerspectiveCamera();
+
+        const renderTarget = new WebGLRenderTarget(textureWidth, textureHeight);
+
+        const mirrorShader = {
+            uniforms: UniformsUtils.merge([
+                UniformsLib["fog"],
+                UniformsLib["lights"],
+                {
+                    normalSampler: {value: null},
+                    mirrorSampler: {value: null},
+                    alpha: {value: 1.0},
+                    time: {value: 0.0},
+                    size: {value: 1.0},
+                    distortionScale: {value: 20.0},
+                    textureMatrix: {value: new Matrix4()},
+                    sunColor: {value: new Color(0x7f7f7f)},
+                    sunDirection: {value: new Vector3(0.70707, 0.70707, 0)},
+                    eye: {value: new Vector3()},
+                    waterColor: {value: new Color(0x555555)},
+                },
+            ]),
+
+            vertexShader: /* glsl */ `
+				uniform mat4 textureMatrix;
+				uniform float time;
+
+				varying vec4 mirrorCoord;
+				varying vec4 worldPosition;
+
+				#include <common>
+				#include <fog_pars_vertex>
+				#include <shadowmap_pars_vertex>
+				#include <logdepthbuf_pars_vertex>
+
+				void main() {
+					mirrorCoord = modelMatrix * vec4( position, 1.0 );
+					worldPosition = mirrorCoord.xyzw;
+					mirrorCoord = textureMatrix * mirrorCoord;
+					vec4 mvPosition =  modelViewMatrix * vec4( position, 1.0 );
+					gl_Position = projectionMatrix * mvPosition;
+
+				#include <beginnormal_vertex>
+				#include <defaultnormal_vertex>
+				#include <logdepthbuf_vertex>
+				#include <fog_vertex>
+				#include <shadowmap_vertex>
+			}`,
+
+            fragmentShader: /* glsl */ `
+				uniform sampler2D mirrorSampler;
+				uniform float alpha;
+				uniform float time;
+				uniform float size;
+				uniform float distortionScale;
+				uniform sampler2D normalSampler;
+				uniform vec3 sunColor;
+				uniform vec3 sunDirection;
+				uniform vec3 eye;
+				uniform vec3 waterColor;
+
+				varying vec4 mirrorCoord;
+				varying vec4 worldPosition;
+
+				vec4 getNoise( vec2 uv ) {
+					vec2 uv0 = ( uv / 103.0 ) + vec2(time / 17.0, time / 29.0);
+					vec2 uv1 = uv / 107.0-vec2( time / -19.0, time / 31.0 );
+					vec2 uv2 = uv / vec2( 8907.0, 9803.0 ) + vec2( time / 101.0, time / 97.0 );
+					vec2 uv3 = uv / vec2( 1091.0, 1027.0 ) - vec2( time / 109.0, time / -113.0 );
+					vec4 noise = texture2D( normalSampler, uv0 ) +
+						texture2D( normalSampler, uv1 ) +
+						texture2D( normalSampler, uv2 ) +
+						texture2D( normalSampler, uv3 );
+					return noise * 0.5 - 1.0;
+				}
+
+				void sunLight( const vec3 surfaceNormal, const vec3 eyeDirection, float shiny, float spec, float diffuse, inout vec3 diffuseColor, inout vec3 specularColor ) {
+					vec3 reflection = normalize( reflect( -sunDirection, surfaceNormal ) );
+					float direction = max( 0.0, dot( eyeDirection, reflection ) );
+					specularColor += pow( direction, shiny ) * sunColor * spec;
+					diffuseColor += max( dot( sunDirection, surfaceNormal ), 0.0 ) * sunColor * diffuse;
+				}
+
+				#include <common>
+				#include <packing>
+				#include <bsdfs>
+				#include <fog_pars_fragment>
+				#include <logdepthbuf_pars_fragment>
+				#include <lights_pars_begin>
+				#include <shadowmap_pars_fragment>
+				#include <shadowmask_pars_fragment>
+
+				void main() {
+
+					#include <logdepthbuf_fragment>
+					vec4 noise = getNoise( worldPosition.xz * size );
+					vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) );
+
+					vec3 diffuseLight = vec3(0.0);
+					vec3 specularLight = vec3(0.0);
+
+					vec3 worldToEye = eye-worldPosition.xyz;
+					vec3 eyeDirection = normalize( worldToEye );
+					sunLight( surfaceNormal, eyeDirection, 100.0, 2.0, 0.5, diffuseLight, specularLight );
+
+					float distance = length(worldToEye);
+
+					vec2 distortion = surfaceNormal.xz * ( 0.001 + 1.0 / distance ) * distortionScale;
+					vec3 reflectionSample = vec3( texture2D( mirrorSampler, mirrorCoord.xy / mirrorCoord.w + distortion ) );
+
+					float theta = max( dot( eyeDirection, surfaceNormal ), 0.0 );
+					float rf0 = 0.3;
+					float reflectance = rf0 + ( 1.0 - rf0 ) * pow( ( 1.0 - theta ), 5.0 );
+					vec3 scatter = max( 0.0, dot( surfaceNormal, eyeDirection ) ) * waterColor;
+					vec3 albedo = mix( ( sunColor * diffuseLight * 0.3 + scatter ) * getShadowMask(), ( vec3( 0.1 ) + reflectionSample * 0.9 + reflectionSample * specularLight ), reflectance);
+					vec3 outgoingLight = albedo;
+					gl_FragColor = vec4( outgoingLight, alpha );
+
+					#include <tonemapping_fragment>
+					#include <fog_fragment>
+				}`,
+        };
+
+        const material = new ShaderMaterial({
+            fragmentShader: mirrorShader.fragmentShader,
+            vertexShader: mirrorShader.vertexShader,
+            uniforms: UniformsUtils.clone(mirrorShader.uniforms),
+            lights: true,
+            side: side,
+            fog: fog,
+        });
+
+        material.uniforms["mirrorSampler"].value = renderTarget.texture;
+        material.uniforms["textureMatrix"].value = textureMatrix;
+        material.uniforms["alpha"].value = alpha;
+        material.uniforms["time"].value = time;
+        material.uniforms["normalSampler"].value = normalSampler;
+        material.uniforms["sunColor"].value = sunColor;
+        material.uniforms["waterColor"].value = waterColor;
+        material.uniforms["sunDirection"].value = sunDirection;
+        material.uniforms["distortionScale"].value = distortionScale;
+
+        material.uniforms["eye"].value = eye;
+
+        scope.material = material;
+
+        scope.onBeforeRender = function (renderer, scene, camera) {
+            mirrorWorldPosition.setFromMatrixPosition(scope.matrixWorld);
+            cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
+
+            rotationMatrix.extractRotation(scope.matrixWorld);
+
+            normal.set(0, 0, 1);
+            normal.applyMatrix4(rotationMatrix);
+
+            view.subVectors(mirrorWorldPosition, cameraWorldPosition);
+
+            // Avoid rendering when mirror is facing away
+
+            if (view.dot(normal) > 0) return;
+
+            view.reflect(normal).negate();
+            view.add(mirrorWorldPosition);
+
+            rotationMatrix.extractRotation(camera.matrixWorld);
+
+            lookAtPosition.set(0, 0, -1);
+            lookAtPosition.applyMatrix4(rotationMatrix);
+            lookAtPosition.add(cameraWorldPosition);
+
+            target.subVectors(mirrorWorldPosition, lookAtPosition);
+            target.reflect(normal).negate();
+            target.add(mirrorWorldPosition);
+
+            mirrorCamera.position.copy(view);
+            mirrorCamera.up.set(0, 1, 0);
+            mirrorCamera.up.applyMatrix4(rotationMatrix);
+            mirrorCamera.up.reflect(normal);
+            mirrorCamera.lookAt(target);
+
+            mirrorCamera.far = camera.far; // Used in WebGLBackground
+
+            mirrorCamera.updateMatrixWorld();
+            mirrorCamera.projectionMatrix.copy(camera.projectionMatrix);
+
+            // Update the texture matrix
+            textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+            textureMatrix.multiply(mirrorCamera.projectionMatrix);
+            textureMatrix.multiply(mirrorCamera.matrixWorldInverse);
+
+            // Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+            // Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+            mirrorPlane.setFromNormalAndCoplanarPoint(normal, mirrorWorldPosition);
+            mirrorPlane.applyMatrix4(mirrorCamera.matrixWorldInverse);
+
+            clipPlane.set(mirrorPlane.normal.x, mirrorPlane.normal.y, mirrorPlane.normal.z, mirrorPlane.constant);
+
+            const projectionMatrix = mirrorCamera.projectionMatrix;
+
+            q.x = (Math.sign(clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+            q.y = (Math.sign(clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+            q.z = -1.0;
+            q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
+
+            // Calculate the scaled plane vector
+            clipPlane.multiplyScalar(2.0 / clipPlane.dot(q));
+
+            // Replacing the third row of the projection matrix
+            projectionMatrix.elements[2] = clipPlane.x;
+            projectionMatrix.elements[6] = clipPlane.y;
+            projectionMatrix.elements[10] = clipPlane.z + 1.0 - clipBias;
+            projectionMatrix.elements[14] = clipPlane.w;
+
+            eye.setFromMatrixPosition(camera.matrixWorld);
+
+            // Render
+
+            const currentRenderTarget = renderer.getRenderTarget();
+
+            const currentXrEnabled = renderer.xr.enabled;
+            const currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+
+            scope.visible = false;
+
+            renderer.xr.enabled = false; // Avoid camera modification and recursion
+            renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
+
+            renderer.setRenderTarget(renderTarget);
+
+            renderer.state.buffers.depth.setMask(true); // make sure the depth buffer is writable so it can be properly cleared, see #18897
+
+            if (renderer.autoClear === false) renderer.clear();
+            renderer.render(scene, mirrorCamera);
+
+            scope.visible = true;
+
+            renderer.xr.enabled = currentXrEnabled;
+            renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+
+            renderer.setRenderTarget(currentRenderTarget);
+
+            // Restore viewport
+
+            const viewport = camera.viewport;
+
+            if (viewport !== undefined) {
+                renderer.state.viewport(viewport);
+            }
+        };
+    }
+}
+
+//@EliasHasle
+
+
+var Wave = (function () {
+    var waveCount = 0;
+
+    return function (waveType) {
+        this.waveId = waveCount;
+        waveCount++;
+
+        this.waveType = waveType;
+    };
+})();
+
+// export class Wave {
+
+// 	constructor( waveType ) {
+
+// 		this.waveType = waveType;
+
+// 	}
+
+// }
+
+class DirectionalCosine extends Wave {
+    //params: A, T, theta, phi
+    constructor(params) {
+        super();
+
+        params = params || {};
+        params.parentGUI;
+
+        Wave.call(this, "Cosine");
+
+        //amplitude
+        // if ( typeof params.A !== "undefined" ) this.A = params.A;
+        this.A = typeof params.A !== "undefined" ? params.A : 2.0;
+
+        //period
+        this.T = typeof params.T !== "undefined" ? params.T : 5.0;
+
+        //direction
+        this.theta = typeof params.theta !== "undefined" ? params.theta : 0.0;
+
+        //phase shift
+        this.phi = typeof params.phi !== "undefined" ? params.phi : 0.0;
+
+        this.updateWavelength();
+    }
+
+    get T() {
+        return this._T;
+    }
+
+    set T(newvalue) {
+        this._T = newvalue;
+        this.omega = (2 * Math.PI) / this._T;
+        this.updateWavelength();
+    }
+
+    get theta() {
+        return this._theta;
+    }
+
+    set theta(newvalue) {
+        this._theta = newvalue;
+        this.costh = Math.cos((this._theta * Math.PI) / 180);
+        this.sinth = Math.sin((this._theta * Math.PI) / 180);
+    }
+
+    updateWavelength() {
+        let g = 9.81;
+        this.L = (g * this.T * this.T) / (2 * Math.PI);
+
+        if (this.conf) this.conf.updateDisplay(); //TEST
+    }
+
+    calculate(x, y, t) {
+        let xm = x * this.costh + y * this.sinth;
+        return this.A * Math.cos((this.phi * Math.PI) / 180 + 2 * Math.PI * (xm / this.L) - this.omega * t);
+    }
+}
+
+class Ocean extends Mesh {
+    constructor(path, {size = 2048, segments = 127} = {}) {
+        let waterGeometry = new PlaneGeometry(size, size, segments, segments);
+        let waterNormals, water;
+
+        /*
+		The WaterShader is from the THREE examples.
+		The mirror effect does not account for geometry, and there is no self-mirroring. But it mostly looks OK anyway. On tall waves, one can see that the rendered texture is stretched.
+		*/
+        try {
+            waterNormals = new TextureLoader().load(path, function (texture) {
+                texture.wrapS = texture.wrapT = RepeatWrapping;
+            });
+
+            water = new Water(waterGeometry, {
+                textureWidth: 512,
+                textureHeight: 512,
+                waterNormals: waterNormals,
+                alpha: 1.0,
+                sunDirection: params.sunDir,
+                sunColor: 0xffffff,
+                waterColor: 0x001e0f,
+                distortionScale: 50.0,
+            });
+        } catch (e) {
+            // work around for when the water shader fails
+            console.log("Water normals failed to load.", e);
+            waterNormals = new MeshPhongMaterial({
+                color: 0x2222bb,
+                side: DoubleSide,
+            });
+
+            water = {
+                render: function () {},
+                material: {uniforms: {time: {value: 0}}},
+                isWater: false,
+            };
+        }
+
+        super(waterGeometry, waterNormals);
+
+        // Containerized WaveCreator
+        // this.wavCre = new Vessel.WaveCreator();
+
+        // Set the waveMotion as undefined by default
+        this.waveMotion = undefined;
+
+        this.water = water;
+
+        // try {
+
+        // 	this.water = new Water( waterGeometry, {
+        // 		textureWidth: 512,
+        // 		textureHeight: 512,
+        // 		waterNormals: new THREE.TextureLoader().load( "3D_engine/textures/waternormals.jpg", function ( texture ) {
+
+        // 			texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+        // 		} ),
+        // 		alpha: 1.0,
+        // 		sunDirection: params.sunDirection,
+        // 		sunColor: 0xffffff,
+        // 		waterColor: 0x001e0f,
+        // 		distortionScale: 50.0
+        // 	} );
+
+        // 	THREE.Mesh.call( this, waterGeometry, /*new THREE.MeshPhongMaterial({
+        // 	color: 0x041020,
+        // 	side: THREE.DoubleSide,
+        // 	wireframe: true
+        // }),*/ this.water.material ); //clear it to show the ocean
+
+        // 	this.add( this.water );
+
+        // } catch ( e ) {
+
+        // 	THREE.Mesh.call( this,
+        // 		new THREE.PlaneBufferGeometry( this.size, this.size, this.segments, this.segments ),
+        // 		new THREE.MeshPhongMaterial( {
+        // 			color: 0x041020,
+        // 			side: THREE.DoubleSide,
+        // 			wireframe: true
+        // 		} ) );
+        // 	//Dummy object to avoid bugs when water shader fails
+        // 	this.water = {
+        // 		render: function () { },
+        // 		material: { uniforms: { time: { value: 0 } } }
+        // 	};
+        // 	//Axes:
+        // 	this.add( new THREE.AxisHelper( 600 ) );
+
+        // }
+
+        this.waves = [];
+    }
+
+    addGui(parentGUI) {
+        let scope = this;
+
+        this.conf = params.parentGUI.addFolder("Ocean");
+        this.conf.open();
+
+        //Cos menu
+        this.currentCos = new DirectionalCosine(); //{A:NaN,T:NaN,theta:NaN,phi:NaN}); //dummy object
+        let pcos = new Proxy(
+            /*ptarget*/ {},
+            {
+                get: function (obj, prop) {
+                    return scope.currentCos[prop];
+                },
+                set: function (obj, prop, value) {
+                    scope.currentCos[prop] = value;
+                    scope.wavCre.setWaveDef((2 * Math.PI) / scope.currentCos["T"], scope.currentCos["A"], scope.currentCos["theta"]);
+
+                    // Update WaveMotion in case it is defined
+                    if (scope.waveMotion != undefined) {
+                        scope.waveMotion.writeOutput();
+                    }
+
+                    return true; //debug
+                },
+                ownKeys: function (obj) {
+                    return Object.getOwnPropertyNames(scope.currentCos);
+                },
+            }
+        );
+        this.conf.add(pcos, "A", 0.0, 10.0, 0.1).name("Amplitude (A)");
+        this.conf.add(pcos, "T", 2.0, 20.0, 0.1).name("Period (T)");
+        //Wave length is a consequence of period due to dispersion relation
+        //this.conf.add(pcos, "L", 6.0, 700.0, 0.5).name("Length (L)");
+        this.conf.add(pcos, "theta", 0, 360, 0.01).name("<div>Direction (&theta;)</div>");
+        this.conf.add(pcos, "phi", -180, 180, 0.01).name("<div>Phase (&Phi;)</div>");
+
+        //Dispose of temporary cosine wave object
+        this.currentCos = {};
+        this.conf.updateDisplay();
+    }
+
+    addCosineWave(params) {
+        params = params || {};
+        let w = new DirectionalCosine(params);
+        this.waves.push(w);
+        this.wavCre.setWaveDef((2 * Math.PI) / w["T"], w["A"], w["theta"]);
+
+        this.currentCos = w;
+
+        if (this.conf) {
+            this.conf.updateDisplay();
+            this.conf.open();
+        }
+
+        return w;
+    }
+
+    calculateZ(x, y, t) {
+        let z = 0;
+        for (let w of this.waves) {
+            z += w.calculate(x, y, t);
+        }
+
+        return z;
+    }
+
+    // This function must be generalized to whichever ship in the sea
+    addWaveMotion(wavMo) {
+        this.waveMotion = wavMo;
+    }
+
+    //It appears the y axis was inverted here.
+    //I fixed it, but am not sure how it was wrong.
+    update(t) {
+        let pos = this.geometry.getAttribute("position");
+
+        let size = this.size;
+        let segs = this.segments;
+
+        //REGULAR GRID:
+        let vSize = segs + 1;
+        for (let j = 0; j < vSize; j++) {
+            let y = (0.5 - j / segs) * size; //(j/segs-0.5)*size;
+            for (let i = 0; i < vSize; i++) {
+                let x = (i / segs - 0.5) * size;
+                let z = this.calculateZ(x, y, t);
+                pos.setZ(j * vSize + i, z);
+            }
+        }
+
+        pos.needsUpdate = true;
+        this.geometry.computeVertexNormals();
+
+        this.water.material.uniforms.time.value = t;
+    }
+}
+
 // import { Scene } from "../../libs/three.js";
 // import { Camera } from "../../libs/three.js";
+
 
 class Scene extends Scene$1 {
     constructor(spec) {
@@ -34026,12 +35135,65 @@ class Scene extends Scene$1 {
         // Setting the Z-Up reference system.
         Object3D.DefaultUp.set(0, 0, 1);
         this.zUpCont = new Group();
+        this.zUpCont.name = "zUpCont";
         this.zUpCont.rotation.x = -0.5 * Math.PI;
         this.add(this.zUpCont);
 
+        this.vesselGroup = new Group();
+        this.vesselGroup.name = "vesselGroup";
+        this.zUpCont.add(this.vesselGroup);
+
+        // Storing the center of gravity and angles of the ship
+        this._shipCG = new Vector3();
+        this._shipRotation = new Euler();
+
+        // Elements
+        this.ocean = undefined;
         this.compartment_mesh = [];
 
         this._init(spec);
+    }
+
+    set shipCG(value) {
+        this._shipCG.setX(value.x);
+        this._shipCG.setY(value.y);
+        this._shipCG.setZ(value.z);
+    }
+
+    get shipCG() {
+        return this._shipCG.clone();
+    }
+
+    set shipRotation(value) {
+        // Try quaternion rotation in the future
+        const draft_translation = this.vesselGroup.position.clone().z;
+        const cg_position = this.shipCG;
+        // debugger;
+
+        const pivot = new Vector3(cg_position.x, cg_position.y, cg_position.z + draft_translation);
+        // console.log(pivot);
+
+        this.vesselGroup.position.add(pivot.clone().negate());
+
+        // Create a quaternion for the rotation
+        this._shipRotation.set(value.heel, value.trim, 0); // Yaw value is not considered
+
+        // Applying the rotation using quaternion
+        // var q = new THREE.Quaternion();
+        // q.setFromEuler(this._shipRotation);
+        // this.vesselGroup.applyQuaternion(q);
+
+        // Applying the rotation using Euler
+        this.vesselGroup.rotation.x = this._shipRotation.x;
+        this.vesselGroup.rotation.y = this._shipRotation.y;
+        this.vesselGroup.rotation.z = this._shipRotation.z;
+
+        // Translate the vesselGroup back
+        this.vesselGroup.position.add(pivot);
+    }
+
+    get shipRotation() {
+        return this._shipRotation.copy();
     }
 
     _init(spec) {
@@ -34058,6 +35220,9 @@ class Scene extends Scene$1 {
         this.orbitControls.minDistance = 0.1;
 
         document.body.appendChild(this.renderer.domElement);
+
+        // Add hemisphere light
+        this.addToScene(new HemisphereLight(0xccccff, 0x666688, 1));
     }
 
     _initializeDragControls(compartment) {
@@ -34100,19 +35265,46 @@ class Scene extends Scene$1 {
         this.zUpCont.add(element);
     }
 
+    addShipElement(element) {
+        if (element.constructor.name == "Ship") {
+            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
+        }
+
+        this.vesselGroup.add(element);
+    }
+
     addShip(ship) {
-        this.addToScene(ship.hull);
+        this.addShipElement(ship.hull);
 
         ship.compartments.forEach(compartment => {
             this.addCompartment(compartment);
         });
+
+        // Comment: the draft is calculated independently if the design_draft
+        // is provided or not. The ship is inserted on the scene
+        // with the origin in the center of gravity as default.
+        const stability = new HullStability$1(ship);
+
+        // Inserting ship in the position equals to 0
+        this.vesselGroup.position.z = -stability.calculatedDraft;
+
+        this.shipCG = stability.weightsAndCenters.cg;
+        this.shipRotation = stability.calculateStaticalStability();
+
+        // this.vesselGroup.translate(-stability.LCG, -stability.KG, 0)
     }
 
     addCompartment(compartment) {
         // TODO: length is a special case for javascript,
         // maybe should be better to change to
         // something else @ferrari212.
-        const {length, width, height, xpos, ypos, zpos} = compartment;
+        const length = compartment["length"];
+        const width = compartment["width"];
+        const height = compartment["height"];
+
+        const x = compartment["x"];
+        const y = compartment["y"];
+        const z = compartment["z"];
 
         const geometry = new BoxGeometry(width, height, length);
         const material = new MeshBasicMaterial({color: getRandomColor()});
@@ -34122,14 +35314,33 @@ class Scene extends Scene$1 {
 
         const compartment_mesh = new Mesh(geometry, material);
 
+        compartment_mesh.name = compartment.name;
+
         // Rotate to match ZUp reference
         compartment_mesh.rotation.set(Math.PI / 2, Math.PI / 2, 0);
 
-        compartment_mesh.position.set(xpos, ypos, zpos);
+        compartment_mesh.position.set(x, y, z);
 
         this.compartment_mesh.push(compartment_mesh);
 
-        this.addToScene(compartment_mesh);
+        this.addShipElement(compartment_mesh);
+    }
+
+    addOcean(path = undefined, oceanSpec = {}) {
+        this.ocean = new Ocean(path, oceanSpec);
+        this.addToScene(this.ocean);
+
+        if (!this.ocean.water.isWater) {
+            let grid = new GridHelper(1000, 100);
+            grid.rotation.x = 0.5 * Math.PI;
+            grid.position.z = 0.01;
+
+            this.addToScene(grid);
+        }
+
+        let sun = new DirectionalLight(0xffffff, 2);
+        sun.position.set(-512, 246, 128);
+        this.addToScene(sun);
     }
 
     addAxesHelper(size = 10) {
@@ -34138,21 +35349,211 @@ class Scene extends Scene$1 {
     }
 }
 
-class Compartments extends Mesh {
-    constructor({length = 10, width = 10, height = 10, xpos = 0, ypos = 0, zpos = 0, type = "compartment"} = {}) {
+const _lut = [];
+
+for (let i = 0; i < 256; i++) {
+    _lut[i] = (i < 16 ? "0" : "") + i.toString(16);
+}
+
+function generateUUID() {
+    // Copied from the Three.js v126
+    // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
+
+    const d0 = (Math.random() * 0xffffffff) | 0;
+    const d1 = (Math.random() * 0xffffffff) | 0;
+    const d2 = (Math.random() * 0xffffffff) | 0;
+    const d3 = (Math.random() * 0xffffffff) | 0;
+    const uuid =
+        _lut[d0 & 0xff] +
+        _lut[(d0 >> 8) & 0xff] +
+        _lut[(d0 >> 16) & 0xff] +
+        _lut[(d0 >> 24) & 0xff] +
+        "-" +
+        _lut[d1 & 0xff] +
+        _lut[(d1 >> 8) & 0xff] +
+        "-" +
+        _lut[((d1 >> 16) & 0x0f) | 0x40] +
+        _lut[(d1 >> 24) & 0xff] +
+        "-" +
+        _lut[(d2 & 0x3f) | 0x80] +
+        _lut[(d2 >> 8) & 0xff] +
+        "-" +
+        _lut[(d2 >> 16) & 0xff] +
+        _lut[(d2 >> 24) & 0xff] +
+        _lut[d3 & 0xff] +
+        _lut[(d3 >> 8) & 0xff] +
+        _lut[(d3 >> 16) & 0xff] +
+        _lut[(d3 >> 24) & 0xff];
+
+    // .toUpperCase() here flattens concatenated strings to save heap memory space.
+    return uuid.toUpperCase();
+}
+
+class Compartments {
+    constructor({
+        length = 10,
+        width = 10,
+        height = 10,
+        x = 0,
+        y = 0,
+        z = 0,
+        cg = {x: undefined, y: undefined, z: undefined},
+        density = 1025, // Default sault water, units in kg/m**3
+        name = undefined,
+        type = "compartment",
+    } = {}) {
         const compartment = {
             length,
             width,
             height,
-            xpos,
-            ypos,
-            zpos,
+            cg,
+            density,
+            name,
             type,
         };
 
-        return compartment;
+        // Set the uuid as name in case it is not defined
+        Object.assign(this, compartment);
+
+        this.x = x;
+        this.y = y;
+        this.z = z;
+
+        this.name = name || generateUUID();
+
+        this._updateWeight();
+        this._updateCG();
+    }
+
+    set x(value) {
+        this._xpos = value;
+    }
+    get x() {
+        return this._xpos;
+    }
+
+    set y(value) {
+        this._ypos = value;
+    }
+
+    get y() {
+        return this._ypos;
+    }
+
+    set z(value) {
+        this._zpos = value;
+    }
+
+    get z() {
+        return this._zpos;
+    }
+
+    _updateWeight() {
+        this.weight = this.length * this.width * this.height * this.density;
+    }
+
+    _updateCG() {
+        // If any of the values are undefined use the geometric center of
+        // the compartment.
+        if (Object.values(this.cg).some(c => c === undefined)) {
+            this.cg = {
+                x: this.length / 2,
+                y: this.width / 2,
+                z: this.height / 2,
+            };
+        }
     }
 }
+
+const wigleyConstants = wigley_formula();
+
+function wigley_formula() {
+    /*
+    This is a partial and simplified approach to the water lines using
+    the wrigley formulas.
+    The main goal is to use the Tiago formula in: http://shiplab.hials.org/app/shiplines/
+    However, this application would require more effort due to complex of the formulas used
+    
+    As a bypass for creating the features, the wigley formula as defined by:
+    https://kth.diva-portal.org/smash/get/diva2:1236507/FULLTEXT01.pdf
+    Chapter 2.5.1
+    The formula was modified for an non dimensional format
+    */
+
+    const waterLineSteps = 20;
+    const stationSteps = 40;
+
+    const halfBreadths = {
+        waterlines: [],
+        stations: [],
+        table: [],
+    };
+
+    for (let i = 0; i <= waterLineSteps; i++) {
+        const wl = i / waterLineSteps;
+        halfBreadths.waterlines.push(wl);
+
+        const valuesArray = [];
+
+        for (let j = 0; j <= stationSteps; j++) {
+            const st = j / stationSteps;
+
+            const y = (1 - (2 * (st - 0.5)) ** 2) * (1 - (wl - 1) ** 2);
+
+            valuesArray.push(y);
+        }
+
+        halfBreadths.table.push(valuesArray);
+    }
+
+    halfBreadths.stations = Array.from({length: stationSteps + 1}, (_, j) => j / stationSteps);
+
+    return halfBreadths;
+}
+
+const PREDEFINED_HULLS = {
+    // ----------------------------------------- //
+    barge: {
+        halfBreadths: {
+            waterlines: [0, 0, 1],
+            stations: [0, 1],
+            table: [
+                [0, 0],
+                [1, 1],
+                [1, 1],
+            ],
+        },
+        attributes: {
+            LOA: 20,
+            BOA: 10,
+            Depth: 5,
+            APP: 0,
+            structureWeight: 200000, //kg
+        },
+        style: {
+            opacity: 0.5,
+        },
+        design_draft: 3,
+    },
+    // ----------------------------------------- //
+    wigleyHull: {
+        halfBreadths: {
+            waterlines: wigleyConstants.waterlines,
+            stations: wigleyConstants.stations,
+            table: wigleyConstants.table,
+        },
+        attributes: {
+            LOA: 20,
+            BOA: 10,
+            Depth: 4,
+            APP: 0,
+            structureWeight: 50000, //kg
+        },
+        style: {
+            opacity: 0.5,
+        },
+    },
+};
 
 class Hull extends Group {
     // -----------------> Data Structure <--------------------- //
@@ -34183,27 +35584,7 @@ class Hull extends Group {
         // TODO: This is a bypass in case no hull is defined, the file will create a
         // wigley type hull
         if (hull == undefined) {
-            hull = {};
-
-            const halfBreadths = this.wigley_formula();
-
-            this.halfBreadths = {
-                waterlines: halfBreadths.waterlines,
-                stations: halfBreadths.stations,
-                table: halfBreadths.table,
-            };
-
-            this.attributes = {
-                LOA: 20,
-                BOA: 10,
-                Depth: 4,
-                APP: 0,
-            };
-            this.style = {
-                upperColor: "yellow",
-                lowerColor: "green",
-                opacity: 0.5,
-            };
+            hull = PREDEFINED_HULLS["wigleyHull"];
         } else {
             Object.assign(this, hull);
         }
@@ -34212,6 +35593,7 @@ class Hull extends Group {
         this.group = "Hull3D";
         this.name = "Hull3D";
         this.design_draft = design_draft !== undefined ? design_draft : 0.5 * this.attributes.Depth;
+        this.structureWeight = hull.attributes.hasOwnProperty("structureWeight") ? hull.attributes.structureWeight : undefined;
         this.upperColor = typeof this.style.upperColor !== "undefined" ? this.style.upperColor : 0x33aa33;
         this.lowerColor = typeof this.style.lowerColor !== "undefined" ? this.style.lowerColor : 0xaa3333;
         this.opacity = typeof this.style.opacity !== "undefined" ? this.style.opacity : 0.5;
@@ -34301,8 +35683,7 @@ class Hull extends Group {
 
                 //Find upper value for interpolation
                 let c = a + 1;
-                if (upper !== undefined);
-                else if (tab[c][j] !== null && !isNaN(tab[c][j])) {
+                if (upper !== undefined) ; else if (tab[c][j] !== null && !isNaN(tab[c][j])) {
                     upper = tab[c][j];
                 } else {
                     //The cell value is NaN.
@@ -34508,50 +35889,6 @@ class Hull extends Group {
 
         ship.structure.bulkheads;
     }
-
-    wigley_formula() {
-        /*
-        This is a partial and simplified approach to the water lines using
-        the wrigley formulas.
-        The main goal is to use the Tiago formula in: http://shiplab.hials.org/app/shiplines/
-        However, this application would require more effort due to complex of the formulas used
-        
-        As a bypass for creating the features, the wigley formula as defined by:
-        https://kth.diva-portal.org/smash/get/diva2:1236507/FULLTEXT01.pdf
-        Chapter 2.5.1
-        The formula was modified for an non dimensional format
-        */
-
-        const waterLineSteps = 20;
-        const stationSteps = 40;
-
-        const halfBreadths = {
-            waterlines: [],
-            stations: [],
-            table: [],
-        };
-
-        for (let i = 0; i <= waterLineSteps; i++) {
-            const wl = i / waterLineSteps;
-            halfBreadths.waterlines.push(wl);
-
-            const valuesArray = [];
-
-            for (let j = 0; j <= stationSteps; j++) {
-                const st = j / stationSteps;
-
-                const y = (1 - (2 * (st - 0.5)) ** 2) * (1 - (wl - 1) ** 2);
-
-                valuesArray.push(y);
-            }
-
-            halfBreadths.table.push(valuesArray);
-        }
-
-        halfBreadths.stations = Array.from({length: stationSteps + 1}, (_, j) => j / stationSteps);
-
-        return halfBreadths;
-    }
 }
 
 // TODO: Understand the following explanation under the Ship3D_v2.js in the original Vessels.js
@@ -34686,267 +36023,6 @@ class HullSideGeometry extends PlaneGeometry {
     }
 }
 
-function sumArray(array) {
-    return array.reduce((accumulator, currentValue) => accumulator + currentValue);
-}
-
-function multiplyArrayByConst(array, C) {
-    return array.map(v => v * C);
-}
-
-function geometricCenter(array, x) {
-    // Multiplying the last and first values of the array by half improve the numerical precision.
-    // This value is derived from the trapezoidal multiplier on the extremes
-    // Increase the error if the spaces are not evenly spaced.
-    // This method is also, more efficient than reintegrate the volumes twice. @Ferrari212
-    const LEN = array.length;
-    array[LEN - 1] = 0.5 * array[LEN - 1];
-    array[0] = 0.5 * array[0];
-
-    const SUM = sumArray(array);
-
-    return array.reduce((accumulator, currentValue, index) => accumulator + currentValue * x[index], 0) / SUM;
-
-    // Possible the integration will give it more correctly, value tried but strange division encountered
-    // const product = productArray(array, x)
-    // const MOMENT = simpsonIntegratorDiscrete(product, x)
-    // const INTEGRAL = simpsonIntegratorDiscrete(array, x)
-
-    // return MOMENT / INTEGRAL
-}
-
-function trapezoidalIntegratorCoefficients(x, y) {
-    // From table 4.1 Birian
-    // Different from the example on Birian, the half breadth is already scaled
-    const N = x.length;
-
-    if (N < 2) {
-        throw new Error("At least two data points are required.");
-    }
-
-    let h = x[1] - x[0]; // Assuming equally spaced points
-
-    let multiplier = Array(N).fill(1.0);
-    multiplier[0] = multiplier[N - 1] = 0.5;
-
-    // Create the storage of coefficients
-    let func_areas = [],
-        func_moments = [],
-        fm_long = [],
-        fm_trans = [];
-
-    for (let i = 0; i < N; i++) {
-        const fa = multiplier[i] * y[i];
-        const fm = fa * x[i];
-        const fm_l = fm * x[i];
-        const fm_t = multiplier[i] * y[i] * y[i] * y[i];
-
-        func_areas.push(fa);
-        func_moments.push(fm);
-        fm_long.push(fm_l);
-        fm_trans.push(fm_t);
-    }
-
-    const func_of_areas = sumArray(func_areas);
-    const func_of_moments = sumArray(func_moments);
-    const func_of_ix = sumArray(fm_long);
-    const func_of_it = sumArray(fm_trans);
-
-    const AWL = 2 * h * func_of_areas;
-    const LCF = func_of_moments / func_of_areas;
-    const IT = (2 / 3) * func_of_it * h;
-    const Iy = 2 * func_of_ix * h;
-    const IL = Iy - Math.pow(LCF, 2) * AWL;
-
-    return {
-        AWL: AWL,
-        LCF: LCF,
-        IT: IT,
-        Iy: Iy,
-        IL: IL,
-    };
-}
-
-function simpsonIntegratorDiscrete(x, y) {
-    // Equivalent from the Composite Simpson's rule for irregularly spaced data
-    // "https://en.wikipedia.org/wiki/Simpson's_rule" for python
-
-    const n = x.length - 1;
-
-    if (n < 1) {
-        throw new Error("At least two data points are required.");
-    }
-
-    if (n != y.length - 1) {
-        throw new Error("x and y must be from the same size");
-    }
-
-    if (n === 1) {
-        // If there's only one interval, just use the trapezoidal rule
-        const h = x[1] - x[0];
-        return (h * (y[0] + y[1])) / 2;
-    }
-
-    // Calculate h as the difference between consecutive x values
-    let h = [];
-    for (let i = 0; i < n; i++) {
-        h.push(x[i + 1] - x[i]);
-    }
-
-    let result = 0.0;
-
-    for (let i = 1; i < n; i += 2) {
-        let h0 = h[i - 1];
-        let h1 = h[i];
-
-        // Skip intervals where the difference is zero
-        if (h0 === 0.0 || h1 === 0.0) {
-            continue;
-        }
-
-        let hph = h1 + h0;
-        let hdh = h1 / h0;
-        let hmh = h1 * h0;
-
-        result += (hph / 6) * ((2 - hdh) * y[i - 1] + (hph ** 2 / hmh) * y[i] + (2 - 1 / hdh) * y[i + 1]);
-    }
-
-    if (n % 2 === 1) {
-        let h0 = h[n - 2];
-        let h1 = h[n - 1];
-
-        // Skip the last interval if any difference is zero
-        if (h0 !== 0 && h1 !== 0) {
-            result += (y[n] * (2 * h1 ** 2 + 3 * h0 * h1)) / (6 * (h0 + h1));
-            result += (y[n - 1] * (h1 ** 2 + 3 * h1 * h0)) / (6 * h0);
-            result -= (y[n - 2] * h1 ** 3) / (6 * h0 * (h0 + h1));
-        }
-    }
-
-    return result;
-}
-
-class HullHydrostatics {
-    constructor(hull, draft) {
-        if (draft > hull.attributes.Depth) {
-            throw new Error("Design draft is bigger than the depth which is realistically impossible.");
-        }
-
-        const h = draft / hull.attributes.Depth;
-
-        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(hull, h);
-
-        Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
-    }
-
-    interpolateWaterline(hull, h = 1) {
-        // Get the hull geometry's port side surface
-        const waterLines = hull.halfBreadths.waterlines;
-        const stations = hull.halfBreadths.stations;
-        const table = hull.halfBreadths.table;
-
-        // Extract the geometry tables and hull dimensions
-        const LOA = hull.attributes.LOA; // Length Overall
-        const Depth = hull.attributes.Depth; // Depth
-        const BOA = hull.attributes.BOA; // BOA
-
-        const HALF_BREADTHS = BOA / 2;
-
-        // Find the parameters and the submerged waterlines and half breadths tables
-        const {submergedWaterLines, submergedTables, interpolatedTableLine} = this.takeSubmergedTables(waterLines, table, h);
-
-        // Scaling the submerged tables
-        const slicedTables = submergedTables.map(row => {
-            // Reference in the center of the Ship, therefore multiply for BOA/2
-            return multiplyArrayByConst(row, HALF_BREADTHS);
-        });
-        const interpolatedWaterlineRow = multiplyArrayByConst(interpolatedTableLine, HALF_BREADTHS);
-        const stationPositions = multiplyArrayByConst(stations, LOA);
-        const scaledWaterlines = multiplyArrayByConst(submergedWaterLines, Depth);
-
-        return {
-            x: stationPositions,
-            z: scaledWaterlines,
-            submerged_table: slicedTables,
-            waterline_row: interpolatedWaterlineRow,
-        };
-    }
-
-    /**
-     *
-     * @param {Array.<number>} waterLines
-     * @param {number} h Location of the water line relative to the Depth. h = 1 for draft equals to the Depth
-     * @returns
-     */
-    takeSubmergedTables(waterLines, tables, h) {
-        // By pass in case the draft is equal to the depth
-        if (h === 1) {
-            const lastIndex = waterLines.length - 1;
-
-            return {index: lastIndex, mu: 0, submergedWaterLines: waterLines, submergedTables: tables};
-        }
-
-        // Find the index and interpolation factor 'mu' for waterline height 'h'
-        const {index, mu} = bisectionSearch(waterLines, h);
-
-        const submergedWaterLines = waterLines.slice(0, index + 1);
-
-        const submergedTables = tables.slice(0, submergedWaterLines.length);
-
-        // Complete tables by applying a linear interpolation in the last height before the waterline
-        const lastTableLine = tables[index];
-        const nextTableLine = tables[index + 1];
-        const interpolatedTableLine = lastTableLine.map((value, i) => {
-            return lerp(value, nextTableLine[i], mu);
-        });
-
-        submergedTables.push(interpolatedTableLine);
-        submergedWaterLines.push(h);
-
-        return {index, mu, submergedWaterLines, submergedTables, interpolatedTableLine};
-    }
-
-    computeHydrostatics(x, z, submerged_table, waterline_row) {
-        // Cross-section areas
-        const cs_area = submerged_table[0].map((_, i) => {
-            const yi = submerged_table.map(row => row[i]);
-
-            return 2 * simpsonIntegratorDiscrete(z, yi);
-        });
-
-        // Waterline areas
-        const wl_area = submerged_table.map(row => {
-            return 2 * simpsonIntegratorDiscrete(x, row);
-        });
-
-        const volume = simpsonIntegratorDiscrete(z, wl_area);
-        const disp = 1025 * volume * 9.81;
-
-        const KB = geometricCenter(wl_area, z);
-        const LCB = geometricCenter(cs_area, x);
-
-        const {AWL, LCF, IT, Iy, IL} = trapezoidalIntegratorCoefficients(x, waterline_row);
-
-        const TPC = (AWL * 1.025) / 100;
-
-        const BM = IT / volume;
-
-        return {
-            volume: volume,
-            disp: disp,
-            KB: KB,
-            LCB: LCB,
-            AWL: AWL,
-            LCF: LCF,
-            IT: IT,
-            Iy: Iy,
-            IL: IL,
-            TPC: TPC,
-            BM: BM,
-        };
-    }
-}
-
 class Ship {
     constructor(specification) {
         // TODO: Read the GLTF in case the specification is assigned
@@ -34954,20 +36030,57 @@ class Ship {
 
         // List of compartments
         this.compartments = [];
+        this.cargoCompartments = [];
+        this.ballastCompartments = [];
+        this.fuelCompartments = [];
+        this.freshWater = [];
+
+        // List of equipments
+        this.engine = [];
+        this.equipments = [];
     }
 
-    addHull(hull) {
-        if (!hull.hasOwnProperty("design_draft") || typeof hull.design_draft !== "number") {
-            throw new Error("The attribute 'design_draft' is either missing or not a numerical value.");
+    addHull(hull = undefined, att = {}) {
+        const {design_draft = undefined, predefinedHullName = undefined} = att;
+
+        if (hull === undefined) {
+            // Undefined hull will be assigned automatically to Wigley Hull
+            this.hull = this.getPredefinedHull(predefinedHullName);
+            return this.hull;
         }
 
-        this.hull = new Hull(hull, hull.design_draft);
+        if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft !== "number") {
+            // Assign the design draft written in the hull object
+            design_draft = hull.design_draft;
+        }
+
+        this.hull = new Hull(hull, design_draft);
+
+        return this.hull;
+    }
+
+    getPredefinedHull(hullName = "wigleyHull") {
+        // Add a predefined hull, options are:
+        // barge, wigleyHull
+        if (!["barge", "wigleyHull"].includes(hullName)) {
+            throw new Error(`Predefined hullName = ${hullName} not defined in the list of predefined ships.`);
+        }
+        return new Hull(PREDEFINED_HULLS[hullName]);
     }
 
     initializeHydrostatics() {
         if (!this.hull) throw new Error("Hydrostatics only available after hull definition. Use addHull method");
 
         this.HullHydrostatics = new HullHydrostatics(this.hull, this.hull.design_draft);
+    }
+
+    initializeStability() {
+        if (this.HullHydrostatics)
+            throw new Error(
+                "Hydrostatics is a subclass of Stability. Therefore, no need for initializing hydrostatics 'shi.initializeHydrostatics()'."
+            );
+
+        this.HullStability = new HullStability(this.ship);
     }
 
     addBulkhead(xpos_aft, thickness, density) {
@@ -34990,6 +36103,18 @@ class Ship {
         this.compartments.push(compartment);
     }
 
+    getCompartmentByName(name) {
+        if (!this.hull) throw new Error("Name variable not defined");
+
+        for (const compartment of this.compartments) {
+            if (compartment.name === name) {
+                return compartment;
+            }
+        }
+
+        throw new Error(`Name = ${name} not defined in the list of defined compartments.`);
+    }
+
     initializeDragControls() {
         this.scene._initializeDragControls(this.compartments);
     }
@@ -35007,4 +36132,4 @@ if (typeof window !== "undefined") {
     }
 }
 
-export {HullHydrostatics, Scene, Ship, math};
+export { HullHydrostatics, Scene, Ship, math };
