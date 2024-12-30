@@ -1,4 +1,4 @@
-const REVISION$1 = "v0.0.1-alpha";
+const REVISION$1 = "v0.0.4-alpha";
 
 function bisectionSearch(array, value) {
     if (value < array[0]) {
@@ -23652,6 +23652,105 @@ function toJSON$1(shapes, data) {
     return data;
 }
 
+class SphereGeometry extends BufferGeometry {
+    constructor(radius = 1, widthSegments = 8, heightSegments = 6, phiStart = 0, phiLength = Math.PI * 2, thetaStart = 0, thetaLength = Math.PI) {
+        super();
+        this.type = "SphereGeometry";
+
+        this.parameters = {
+            radius: radius,
+            widthSegments: widthSegments,
+            heightSegments: heightSegments,
+            phiStart: phiStart,
+            phiLength: phiLength,
+            thetaStart: thetaStart,
+            thetaLength: thetaLength,
+        };
+
+        widthSegments = Math.max(3, Math.floor(widthSegments));
+        heightSegments = Math.max(2, Math.floor(heightSegments));
+
+        const thetaEnd = Math.min(thetaStart + thetaLength, Math.PI);
+
+        let index = 0;
+        const grid = [];
+
+        const vertex = new Vector3();
+        const normal = new Vector3();
+
+        // buffers
+
+        const indices = [];
+        const vertices = [];
+        const normals = [];
+        const uvs = [];
+
+        // generate vertices, normals and uvs
+
+        for (let iy = 0; iy <= heightSegments; iy++) {
+            const verticesRow = [];
+
+            const v = iy / heightSegments;
+
+            // special case for the poles
+
+            let uOffset = 0;
+
+            if (iy == 0 && thetaStart == 0) {
+                uOffset = 0.5 / widthSegments;
+            } else if (iy == heightSegments && thetaEnd == Math.PI) {
+                uOffset = -0.5 / widthSegments;
+            }
+
+            for (let ix = 0; ix <= widthSegments; ix++) {
+                const u = ix / widthSegments;
+
+                // vertex
+
+                vertex.x = -radius * Math.cos(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+                vertex.y = radius * Math.cos(thetaStart + v * thetaLength);
+                vertex.z = radius * Math.sin(phiStart + u * phiLength) * Math.sin(thetaStart + v * thetaLength);
+
+                vertices.push(vertex.x, vertex.y, vertex.z);
+
+                // normal
+
+                normal.copy(vertex).normalize();
+                normals.push(normal.x, normal.y, normal.z);
+
+                // uv
+
+                uvs.push(u + uOffset, 1 - v);
+
+                verticesRow.push(index++);
+            }
+
+            grid.push(verticesRow);
+        }
+
+        // indices
+
+        for (let iy = 0; iy < heightSegments; iy++) {
+            for (let ix = 0; ix < widthSegments; ix++) {
+                const a = grid[iy][ix + 1];
+                const b = grid[iy][ix];
+                const c = grid[iy + 1][ix];
+                const d = grid[iy + 1][ix + 1];
+
+                if (iy !== 0 || thetaStart > 0) indices.push(a, b, d);
+                if (iy !== heightSegments - 1 || thetaEnd < Math.PI) indices.push(b, c, d);
+            }
+        }
+
+        // build geometry
+
+        this.setIndex(indices);
+        this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+        this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+        this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    }
+}
+
 /**
  * parameters = {
  *  color: <THREE.Color>
@@ -25836,7 +25935,7 @@ class AnimationClip {
                     tracks.push(new NumberKeyframeTrack(".morphTargetInfluence[" + morphTargetName + "]", times, values));
                 }
 
-                duration = morphTargetNames.length * (fps || 1.0);
+                duration = morphTargetNames.length * (fps);
             } else {
                 // ...assume skeletal animation
 
@@ -36120,6 +36219,196 @@ class Ship {
     }
 }
 
+const PANEL = document.createElement("div");
+PANEL.style.position = "absolute";
+PANEL.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+PANEL.style.color = "white";
+PANEL.style.padding = "10px";
+PANEL.style.borderRadius = "5px";
+PANEL.style.display = "none";
+
+class Controller {
+    constructor(scene, ...elements) {
+        if (!scene.constructor.name === "Scene") {
+            throw new Error("First attribute from controller must be valid Scene class.");
+        }
+
+        this.scene = scene;
+        this.lockAngles = false;
+
+        // TODO: Generalize the control to general modifications of the elements
+        if (!this.scene.dragControls) {
+            throw new Error("DragControls not defined");
+        }
+
+        // This function only apply only the function that are implemented in the controller
+        const _ASSIGN_FUNC = {
+            Ship: this._addShip,
+            HullStability: this._addStability,
+        };
+
+        elements.forEach(e => {
+            try {
+                // Check if e has a valid constructor and name
+                if (!e || !e.constructor || !e.constructor.name) {
+                    throw new Error("Element does not have a valid constructor.");
+                }
+
+                const key = e.constructor.name;
+
+                // Check if key exists in _ASSIGN_FUNC
+                if (!(key in _ASSIGN_FUNC)) {
+                    throw new Error(`No implementation for ${key} method`);
+                }
+
+                // Call the function safely
+                _ASSIGN_FUNC[key].call(this, e);
+            } catch (error) {
+                console.error(`Error processing element: ${e}`, error.message);
+            }
+        });
+
+        this._applyEventListeners();
+    }
+
+    _applyEventListeners() {
+        const SHIP = this.ship;
+        const STABILITY = this.stability;
+        const updateCenter = this.updateCenter.bind(this);
+
+        if (this.scene.dragControls) {
+            this.dragStatus = false;
+            this.object = null;
+
+            const dragObject = event => {
+                const OBJECT = event.object;
+                const compartment = SHIP.getCompartmentByName(OBJECT.name);
+
+                compartment.x = OBJECT.position.x;
+                compartment.y = OBJECT.position.y;
+                compartment.z = OBJECT.position.z;
+
+                if (STABILITY) {
+                    STABILITY._updateStability();
+
+                    if (!this.lockAngles) {
+                        this.scene.shipRotation = STABILITY.calculateStaticalStability();
+                    }
+
+                    updateCenter(STABILITY);
+                }
+            };
+
+            this.scene.dragControls.addEventListener("drag", dragObject);
+        }
+    }
+
+    _addShip(ship) {
+        this.ship = ship;
+    }
+
+    _addStability(stability) {
+        this.stability = stability;
+    }
+
+    notifyChange(newValue) {
+        console.log("Attribute changed in FirstClass to:", newValue);
+        // Perform some logic here
+    }
+
+    // --------- Compartment Data --------- //
+    get compartmentData() {
+        return this._compartmentData;
+    }
+
+    set compartmentData(newData) {
+        this._compartmentData = newData;
+        this.compartments.updateData(newData); // Update Compartments
+        console.log("Compartment data updated:", newData);
+    }
+    // --------- ---------------- --------- //
+
+    trackCenters() {
+        const STABILITY = this.stability;
+        const raycaster = new Raycaster();
+        const camera = this.scene.camera;
+        const objects = [];
+        this.mesh_centers = {};
+
+        // Create an info panel
+        const infoPanel = PANEL;
+        document.body.appendChild(infoPanel);
+
+        this.mesh_centers.mesh_cg = new MeshCenterController("CG", 0x00ff00);
+        this.mesh_centers.mesh_buoy = new MeshCenterController("KB", 0xff0000);
+        this.mesh_centers.mesh_bm = new MeshCenterController("BM", 0xe6e6fa);
+
+        this.updateCenter(STABILITY);
+
+        objects.push(this.mesh_centers.mesh_cg);
+        objects.push(this.mesh_centers.mesh_buoy);
+        objects.push(this.mesh_centers.mesh_bm);
+
+        this.scene.addShipElement(this.mesh_centers.mesh_cg);
+        this.scene.addShipElement(this.mesh_centers.mesh_buoy);
+        this.scene.addShipElement(this.mesh_centers.mesh_bm);
+
+        // Helper functions to show and hide the info panel
+        function showInfoPanel(intersectedObject, x, y) {
+            const {name, position} = intersectedObject.userData;
+            infoPanel.style.display = "block";
+            infoPanel.style.left = `${x + 10}px`;
+            infoPanel.style.top = `${y + 10}px`;
+            infoPanel.innerHTML = `<b>${name}</b><br>Position: (x: ${position.x.toFixed(2)}, y: ${position.y.toFixed(2)}, z: ${position.z.toFixed(
+                2
+            )})`;
+        }
+
+        function hideInfoPanel() {
+            infoPanel.style.display = "none";
+        }
+
+        // Handle mouse movement
+        function onMouseMove(event) {
+            const mouse = new Vector2();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(objects);
+            if (intersects.length > 0) {
+                showInfoPanel(intersects[0].object, event.clientX, event.clientY);
+            } else {
+                hideInfoPanel();
+            }
+        }
+
+        // Add an event listener for mouse movement
+        window.addEventListener("mousemove", onMouseMove);
+    }
+
+    updateCenter(stability) {
+        this.mesh_centers.mesh_cg.updatePosition(stability.weightsAndCenters.cg);
+        this.mesh_centers.mesh_buoy.updatePosition({x: stability.LCB, y: stability.hull.position.y, z: stability.KB}); // ship is always symmetrical in this modeling
+        this.mesh_centers.mesh_bm.updatePosition({x: stability.LCB, y: stability.hull.position.y, z: stability.GM}); // ship is always symmetrical in this modeling
+    }
+}
+
+class MeshCenterController extends Mesh {
+    constructor(name, color) {
+        super(new SphereGeometry(0.5, 32, 32), new MeshBasicMaterial());
+
+        this.material.color.set(color);
+        this.userData = {name: name, position: this.position};
+    }
+
+    updatePosition(newPosition) {
+        this.position.copy(newPosition);
+    }
+}
+
 const math = {
     bisectionSearch,
 };
@@ -36132,4 +36421,4 @@ if (typeof window !== "undefined") {
     }
 }
 
-export { HullHydrostatics, Scene, Ship, math };
+export { Controller, HullHydrostatics, HullStability$1 as HullStability, Scene, Ship, math };

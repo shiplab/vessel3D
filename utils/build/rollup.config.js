@@ -17,7 +17,11 @@ const builds = [
             format: "esm",
             file: "build/vessel3D.min.js",
         },
-        plugins: [terser()],
+        plugins: [
+            terser({
+                keep_classnames: true,
+            }),
+        ],
     },
 ];
 

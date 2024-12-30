@@ -9,6 +9,7 @@ export const math = {
 export {Scene} from "./jsm/engine/Scene.js";
 export {Ship} from "./jsm/ship/Ship.js";
 export {HullHydrostatics} from "./jsm/physics/Hydrostatic.js";
+export {HullStability} from "./jsm/physics/Stability.js";
 export {Controller} from "./jsm/engine/Controller.js";
 
 if (typeof window !== "undefined") {
