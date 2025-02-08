@@ -1,24 +1,21 @@
-import { REVISION } from "./constants.js";
+import {REVISION} from "./constants.js";
 
-// export const f = {
-// 	linearFromArrays,
-// 	bilinear,
-// 	bisectionSearch
-// };
+import {bisectionSearch} from "./jsm/math/interpolation.js";
 
-export { Scene } from "./jsm/engine/Scene.js";
-export { Ship } from "./jsm/ship/Ship.js"
+export const math = {
+    bisectionSearch,
+};
 
-if ( typeof window !== "undefined" ) {
+export {Scene} from "./jsm/engine/Scene.js";
+export {Ship} from "./jsm/ship/Ship.js";
+export {HullHydrostatics} from "./jsm/physics/Hydrostatic.js";
+export {HullStability} from "./jsm/physics/Stability.js";
+export {Controller} from "./jsm/engine/Controller.js";
 
-	if ( window.__VESSEL__ ) {
-
-		console.warn( "WARNING: Multiple instances of Vessel.js being imported." );
-
-	} else {
-
-		window.__VESSEL__ = REVISION;
-
-	}
-
+if (typeof window !== "undefined") {
+    if (window.__VESSEL__) {
+        console.warn("WARNING: Multiple instances of Vessel.js being imported.");
+    } else {
+        window.__VESSEL__ = REVISION;
+    }
 }
