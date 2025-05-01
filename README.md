@@ -1,4 +1,4 @@
-# vessel3D
+# Vessel3D
 
 Vessel3D is a library for conceptual ship visualization, built on top of the Three.js library for 3D rendering in the browser.
 
@@ -7,7 +7,7 @@ stability calculations, with more features planned for future releases.
 
 # Installation
 
-You can install vessel3D by cloning the repository or (if available) using a package manager.
+You can install vessel3D by cloning the repository or using a package manager.
 
 #### Option 1: Clone the repository
 
@@ -18,7 +18,7 @@ git clone https://github.com/yourusername/vessel3D.git
 cd vessel3D
 ```
 
-#### Option 2: Install via npm (if published)
+#### Option 2: Install via npm
 
 Install the Vessel 3D into your application using npm.
 
@@ -108,9 +108,9 @@ animate();
 
 **Author**: Felipe Ferrari
 
-This project was developed with the valuable academic and technical support of NTNU (Norwegian University of Science and Technology) and the ShipLab
-research group. Special recognition goes to the ShipLab team for their prior development of supporting libraries, which provided essential groundwork,
-such as the Vessels.js library, for the creation of Vessel3D library.
+This project was developed with the valuable academic and technical support of **NTNU** (Norwegian University of Science and Technology) and the
+**ShipLab** research group. Special recognition goes to the ShipLab team for their prior development of supporting tools, such as the _Vessels.js_
+library, which provided essential groundwork for the creation of the **vessel3D** library.
 
 ## License
 
