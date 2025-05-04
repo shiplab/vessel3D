@@ -1,89 +1,112 @@
-import * as Vessel3D from "../source/vessel3D.js";
+const editor = document.getElementById("editor");
+const viewer = document.getElementById("viewer");
 
-import {HullHydrostatics as Hydrostatic} from "../source/jsm/physics/Hydrostatic.js";
-import {HullStability} from "../source/jsm/physics/Stability.js";
-import {Controller} from "../source/jsm/engine/Controller.js";
+import * as Vessel3D from "../build/vessel3D.js";
+
+const trackPosition = {x: 15, y: 15, z: 15};
+
+const defaultCode = `
+
+// Imported Vessel3D library automatically
+// import * as Vessel3D from "../build/vessel3D.js";
 
 const ship = new Vessel3D.Ship();
-
-// Commands to create compartments
-// ship.addCompartments()
-
-// 1- Define the hull and add it under ship
-const hull = {};
-// hull.halfBreadths = {
-//     "waterlines": [0, 0, 0.5, 1],
-//     "stations":[0, 1],
-//     "table": [[0 , 0],[1 , 1], [1 , 1],[1 , 1]],
-// }
-hull.halfBreadths = {
-    waterlines: [0, 0, 1],
-    stations: [0, 1],
-    table: [
-        [0, 0],
-        [0.5, 0.5],
-        [1, 1],
-    ],
-};
-
-hull.attributes = {
-    LOA: 20,
-    BOA: 10,
-    Depth: 5,
-    APP: 0,
-    structureWeight: 200000, //kg
-};
-hull.style = {
-    opacity: 0.5,
-};
-hull.design_draft = 3;
-
-// 1.2 - There is the possibility to create a default hull as well by using:
-ship.addHull();
-// ship.addHull(hull);
-// ship.addHull(undefined, {predefinedHullName: "barge"});
-
-// 1.1 - Add compartments if you want, here are some examples:
-// ship.addCompartments({height: 20, x:0})
-ship.addCompartments({name: "test", length: 2, width: 2, height: 2, x: 10, y: 0, z: 5, density: 1000}); // ship.addCompartments({width: 20, x:10})
-
-// 2 - Create a scene with ocean
 const scene = new Vessel3D.Scene();
+
+ship.addHull();
+ship.addCompartments({ 
+    name: "test",
+    length: 2,
+    width: 2,
+    height: 2,
+    x: 10,
+    y: 0,
+    z: 5,
+    density: 1000 
+});
+
+
 scene.addShip(ship);
 scene.addOcean();
 scene.addAxesHelper();
 
-// 3 - Initialize hydrostatic
-// The hydrostatic can be created using the initialize hydrostatic command or can
-// be created independently
-// ship.initializeHydrostatics()
-const hydrostatics = new Hydrostatic(hull, 3, false);
-const hydrostaticTable = hydrostatics.retrieveHydrostaticCurves();
+const hydrostatics = new Vessel3D.HullHydrostatics(ship.hull, 3, false);
+const stability = new Vessel3D.HullStability(ship);
 
-// 4 - Initialize stability
-const stability = new HullStability(ship);
-const {heel, trim} = stability.calculateStaticalStability();
+// Verify stability calculations
+// const {heel, trim} = stability.calculateStaticalStability();
+// console.log("LCG: ", stability.LCG);
+// console.log("KG: ", stability.KG);
+// console.log("GM: ", stability.GM);
+// console.log("Heel angle: ", heel);
+// console.log("Trim angle: ", trim);
 
-console.log(stability);
-console.log("LCG: ", stability.LCG);
-console.log("KG: ", stability.KG);
-console.log("GM: ", stability.GM);
-console.log("Heel angle: ", heel);
-console.log("Trim angle: ", trim);
+// const controller = new Vessel3D.Controller(scene, ship, stability);
+// controller.trackCenters();
 
-scene.initializeDragControls();
+//---- Function to track position (Not necessary for ordinary use) ---- //
+scene.camera.position.set(trackPosition.x, trackPosition.y, trackPosition.z);
+scene.camera.lookAt(0, 0, 0);
+//---- End of function ---->
 
-const controller = new Controller(scene, ship, stability);
-// controller.lockAngles = true;
-// Initialize dragControls
-
-console.log(ship);
-console.log(hydrostaticTable);
-controller.trackCenters();
-
-// Render loop
 function animate() {
     requestAnimationFrame(animate);
     scene.renderer.render(scene, scene.camera);
+
+    //---- Update camera position (Not necessary for ordinary use) ----//
+    trackPosition.x = scene.camera.position.x;
+    trackPosition.y = scene.camera.position.y;
+    trackPosition.z = scene.camera.position.z;
+    //---- End of function ----//
 }
+
 animate();
+
+viewer.appendChild(scene.renderer.domElement);
+scene.renderer.setSize(viewer.clientWidth, viewer.clientHeight)
+`;
+
+const codeMirror = CodeMirror.fromTextArea(document.getElementById("editor"), {
+    mode: "javascript",
+    lineNumbers: true,
+    theme: "default",
+    viewportMargin: 50,
+});
+
+codeMirror.setValue(defaultCode);
+
+let currentScene = null;
+let timeoutId;
+
+function runUserCode() {
+    if (currentScene && currentScene.renderer) {
+        currentScene.renderer.dispose();
+        viewer.innerHTML = "";
+    }
+
+    try {
+        const userCode = `(async function(viewer) { ${codeMirror.getValue()} })`;
+        const runFunc = eval(userCode);
+        runFunc(viewer);
+    } catch (err) {
+        console.error("Error executing user code:", err);
+    }
+}
+
+codeMirror.on("change", () => {
+    clearTimeout(timeoutId);
+    viewer.firstChild?.remove(); // Remove the previous scene if it exists
+    timeoutId = setTimeout(runUserCode, 250);
+});
+
+// editor.addEventListener("input", () => {
+//     clearTimeout(timeoutId);
+//     viewer.firstChild?.remove(); // Remove the previous scene if it exists
+//     timeoutId = setTimeout(runUserCode, 250); // debounce for smoother updates
+// });
+
+viewer.addEventListener("mouseover", () => {
+    viewer.style.cursor = "default";
+});
+
+runUserCode();
