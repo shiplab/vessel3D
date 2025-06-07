@@ -139,19 +139,27 @@ export class Scene extends THREE.Scene {
         // This add element is a workaround for covering the difference in the coordinate
         // system between the traditional coordinate of system (x, y, z) in engineering and
         // the chosen system by the Three.js developers (x, z, y)
-        if (element.constructor.name == "Ship") {
-            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
-        }
+        this.checkConstructor(element);
 
         this.zUpCont.add(element);
     }
 
+    removeFromScene(element) {
+        this.checkConstructor(element);
+
+        this.zUpCont.remove(element);
+    }
+
     addShipElement(element) {
+        this.checkConstructor(element);
+
+        this.vesselGroup.add(element);
+    }
+
+    checkConstructor(element) {
         if (element.constructor.name == "Ship") {
             throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
         }
-
-        this.vesselGroup.add(element);
     }
 
     addShip(ship) {
