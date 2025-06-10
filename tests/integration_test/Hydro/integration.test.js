@@ -1,6 +1,5 @@
-import {trapezoidalIntegratorCoefficients} from "../../../source/jsm/math/integration";
+import {trapezoidalIntegratorCoefficients} from "../../../source/jsm/math/integration.js";
 import {HullHydrostatics} from "../../../source/jsm/physics/Hydrostatic.js";
-import * as Vessel3D from "../../../source/vessel3D.js";
 
 /**
  * @jest-environment jsdom
@@ -55,7 +54,7 @@ describe("Test Ship Hydrostatics Formulas for Area", () => {
         };
         hull.design_draft = 2;
 
-        // Function to moch the Three.js behavior for getObjectByNameFunctions
+        // Function to mock the Three.js behavior for getObjectByNameFunctions
         hull["getObjectByName"] = function (_) {
             const sideSurface = {
                 geometry: {
@@ -87,12 +86,14 @@ describe("Test Ship Hydrostatics Formulas for Area", () => {
         const IL = (BWL * Math.pow(LOA, 3)) / 12;
         const KB = (hull.design_draft * 2) / 3; // Center of the volume of a triangular hull
 
+        // The triangular hull is not perfectly depicted due to the sparse points,
+        // so the values are not equal
         expect(hullHydrostatics.IT).toBeCloseTo(IT);
         console.log(`IT = ${IT} = ${hullHydrostatics.IT}`);
         expect(hullHydrostatics.IL).not.toBeCloseTo(IL);
-        console.log(`IL = ${IL} = ${hullHydrostatics.IL}`);
+        console.log(`IL != ${IL} = ${hullHydrostatics.IL}`);
         expect(hullHydrostatics.KB).not.toBeCloseTo(KB);
-        console.log(`KB = ${KB} = ${hullHydrostatics.KB}`);
+        console.log(`KB != ${KB} = ${hullHydrostatics.KB}`);
     });
 
     test("Volumetric verification formulas for dense points triangular ship", () => {
