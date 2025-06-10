@@ -22,23 +22,26 @@ export class Ship {
         this.equipments = [];
     }
 
-    addHull(hull = undefined, att = {}) {
-        const {design_draft = undefined, predefinedHullName = undefined} = att;
-
-        if (hull === undefined) {
-            // Undefined hull will be assigned automatically to Wigley Hull
-            this.hull = this.getPredefinedHull(predefinedHullName);
-            return this.hull;
+    addHull(hull) {
+        // Sanity check: hull must be an object
+        if (typeof hull !== "object" || hull === null || Array.isArray(hull)) {
+            throw new Error("The 'hull' parameter must be an object.");
         }
 
-        if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft !== "number") {
+        if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft === "number") {
             // Assign the design draft written in the hull object
-            design_draft = hull.design_draft;
+            const design_draft = hull.design_draft;
+            this.hull = new Hull(hull, design_draft);
+        } else {
+            this.hull = new Hull(hull);
         }
-
-        this.hull = new Hull(hull, design_draft);
 
         return this.hull;
+    }
+
+    setPredefinedHull(hullName = "wigleyHull") {
+        const predefinedHull = this.getPredefinedHull(hullName);
+        this.addHull(predefinedHull);
     }
 
     getPredefinedHull(hullName = "wigleyHull") {
@@ -47,7 +50,7 @@ export class Ship {
         if (!["barge", "wigleyHull"].includes(hullName)) {
             throw new Error(`Predefined hullName = ${hullName} not defined in the list of predefined ships.`);
         }
-        return new Hull(PREDEFINED_HULLS[hullName]);
+        return PREDEFINED_HULLS[hullName];
     }
 
     initializeHydrostatics() {

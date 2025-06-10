@@ -7,9 +7,11 @@ export class HullHydrostatics {
     constructor(hull, draft = undefined, updateHydrostatic = true) {
         if (draft === undefined) {
             const WARN =
-                "No draft defined, by pass to set the hydrostatic by the half draft." + "Alternatively, use the find draft using Hull Stability.";
+                "No draft defined, by pass to set the hydrostatic by the half depth." + "Alternatively, use the find draft using Hull Stability.";
 
             console.warn(WARN);
+
+            draft = hull.attributes.Depth / 2;
         }
 
         if (draft > hull.attributes.Depth) {
@@ -26,21 +28,26 @@ export class HullHydrostatics {
     updateHydrostatic(draft) {
         this.h = draft / this.hull.attributes.Depth;
 
-        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, this.h);
+        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.h);
 
         Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
     }
 
-    interpolateWaterline(hull, h = 1) {
+    interpolateWaterline(h = 1) {
+
+        if (isNaN(h) || h < 0 || h > 1) {
+            throw new RangeError("Waterline parameter 'h' must be a number between 0 and 1. Current value: " + h);
+        }
+
         // Get the hull geometry's port side surface
-        const waterLines = hull.halfBreadths.waterlines;
-        const stations = hull.halfBreadths.stations;
-        const table = hull.halfBreadths.table;
+        const waterLines = this.hull.halfBreadths.waterlines;
+        const stations = this.hull.halfBreadths.stations;
+        const table = this.hull.halfBreadths.table;
 
         // Extract the geometry tables and hull dimensions
-        const LOA = hull.attributes.LOA; // Length Overall
-        const Depth = hull.attributes.Depth; // Depth
-        const BOA = hull.attributes.BOA; // BOA
+        const LOA = this.hull.attributes.LOA; // Length Overall
+        const Depth = this.hull.attributes.Depth; // Depth
+        const BOA = this.hull.attributes.BOA; // BOA
 
         const HALF_BREADTHS = BOA / 2;
 
@@ -153,6 +160,8 @@ export class HullHydrostatics {
         });
     }
 
+    // TODO: Create unity test for this function, error not triggered when
+    // this.interpolateWaterline(d) was passed as  this.interpolateWaterline(this.hull, d)
     retrieveHydrostaticCurves(n = 19) {
         // This function will calculate all the hydrostatic curves
         // Function is relatively expensive from the computational perspective.
@@ -163,7 +172,7 @@ export class HullHydrostatics {
         const hydrostaticCurves = [];
 
         for (const d of draftsArray) {
-            let {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, d);
+            let {x, z, submerged_table, waterline_row} = this.interpolateWaterline(d);
 
             const draft = d * DEPTH;
 

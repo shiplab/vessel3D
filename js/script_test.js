@@ -39,9 +39,8 @@ hull.style = {
 hull.design_draft = 3;
 
 // 1.2 - There is the possibility to create a default hull as well by using:
-ship.addHull();
-// ship.addHull(hull);
-// ship.addHull(undefined, {predefinedHullName: "barge"});
+// ship.setPredefinedHull();
+ship.addHull(hull);
 
 // 1.1 - Add compartments if you want, here are some examples:
 // ship.addCompartments({height: 20, x:0})

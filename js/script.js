@@ -13,7 +13,7 @@ const defaultCode = `
 const ship = new Vessel3D.Ship();
 const scene = new Vessel3D.Scene();
 
-ship.addHull();
+ship.setPredefinedHull();
 ship.addCompartments({ 
     name: "test",
     length: 2,

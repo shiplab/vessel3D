@@ -33216,9 +33216,11 @@ class HullHydrostatics {
     constructor(hull, draft = undefined, updateHydrostatic = true) {
         if (draft === undefined) {
             const WARN =
-                "No draft defined, by pass to set the hydrostatic by the half draft." + "Alternatively, use the find draft using Hull Stability.";
+                "No draft defined, by pass to set the hydrostatic by the half depth." + "Alternatively, use the find draft using Hull Stability.";
 
             console.warn(WARN);
+
+            draft = hull.attributes.Depth / 2;
         }
 
         if (draft > hull.attributes.Depth) {
@@ -33235,21 +33237,26 @@ class HullHydrostatics {
     updateHydrostatic(draft) {
         this.h = draft / this.hull.attributes.Depth;
 
-        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, this.h);
+        const {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.h);
 
         Object.assign(this, this.computeHydrostatics(x, z, submerged_table, waterline_row));
     }
 
-    interpolateWaterline(hull, h = 1) {
+    interpolateWaterline(h = 1) {
+
+        if (isNaN(h) || h < 0 || h > 1) {
+            throw new RangeError("Waterline parameter 'h' must be a number between 0 and 1. Current value: " + h);
+        }
+
         // Get the hull geometry's port side surface
-        const waterLines = hull.halfBreadths.waterlines;
-        const stations = hull.halfBreadths.stations;
-        const table = hull.halfBreadths.table;
+        const waterLines = this.hull.halfBreadths.waterlines;
+        const stations = this.hull.halfBreadths.stations;
+        const table = this.hull.halfBreadths.table;
 
         // Extract the geometry tables and hull dimensions
-        const LOA = hull.attributes.LOA; // Length Overall
-        const Depth = hull.attributes.Depth; // Depth
-        const BOA = hull.attributes.BOA; // BOA
+        const LOA = this.hull.attributes.LOA; // Length Overall
+        const Depth = this.hull.attributes.Depth; // Depth
+        const BOA = this.hull.attributes.BOA; // BOA
 
         const HALF_BREADTHS = BOA / 2;
 
@@ -33362,6 +33369,8 @@ class HullHydrostatics {
         });
     }
 
+    // TODO: Create unity test for this function, error not triggered when
+    // this.interpolateWaterline(d) was passed as  this.interpolateWaterline(this.hull, d)
     retrieveHydrostaticCurves(n = 19) {
         // This function will calculate all the hydrostatic curves
         // Function is relatively expensive from the computational perspective.
@@ -33372,7 +33381,7 @@ class HullHydrostatics {
         const hydrostaticCurves = [];
 
         for (const d of draftsArray) {
-            let {x, z, submerged_table, waterline_row} = this.interpolateWaterline(this.hull, d);
+            let {x, z, submerged_table, waterline_row} = this.interpolateWaterline(d);
 
             const draft = d * DEPTH;
 
@@ -35223,10 +35232,6 @@ class Ocean extends Mesh {
     }
 }
 
-// import { Scene } from "../../libs/three.js";
-// import { Camera } from "../../libs/three.js";
-
-
 class Scene extends Scene$1 {
     constructor(spec) {
         super();
@@ -35267,7 +35272,6 @@ class Scene extends Scene$1 {
         // Try quaternion rotation in the future
         const draft_translation = this.vesselGroup.position.clone().z;
         const cg_position = this.shipCG;
-        // debugger;
 
         const pivot = new Vector3(cg_position.x, cg_position.y, cg_position.z + draft_translation);
         // console.log(pivot);
@@ -35357,19 +35361,27 @@ class Scene extends Scene$1 {
         // This add element is a workaround for covering the difference in the coordinate
         // system between the traditional coordinate of system (x, y, z) in engineering and
         // the chosen system by the Three.js developers (x, z, y)
-        if (element.constructor.name == "Ship") {
-            throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
-        }
+        this.checkConstructor(element);
 
         this.zUpCont.add(element);
     }
 
+    removeFromScene(element) {
+        this.checkConstructor(element);
+
+        this.zUpCont.remove(element);
+    }
+
     addShipElement(element) {
+        this.checkConstructor(element);
+
+        this.vesselGroup.add(element);
+    }
+
+    checkConstructor(element) {
         if (element.constructor.name == "Ship") {
             throw new Error("It seems that you are trying to add a ship object, try to use scene.addSip(ship) instead.");
         }
-
-        this.vesselGroup.add(element);
     }
 
     addShip(ship) {
@@ -35385,6 +35397,9 @@ class Scene extends Scene$1 {
         const stability = new HullStability$1(ship);
 
         // Inserting ship in the position equals to 0
+        if(typeof stability.calculatedDraft === "nan" ) {
+            throw new Error("Not defined calculated draft")
+        }
         this.vesselGroup.position.z = -stability.calculatedDraft;
 
         this.shipCG = stability.weightsAndCenters.cg;
@@ -35948,7 +35963,6 @@ class Hull extends Group {
         this.hMat.uniforms.aboveWL.value = new Color(upperColor);
         this.hMat.uniforms.belowWL.value = new Color(lowerColor);
         this.hMat.uniforms.opacity.value = opacity;
-
         if (this.port) this.remove(this.port);
         this.port = new Mesh(this.hullGeometry, this.hMat);
         this.port.name = "HullPortSide";
@@ -36139,23 +36153,26 @@ class Ship {
         this.equipments = [];
     }
 
-    addHull(hull = undefined, att = {}) {
-        const {design_draft = undefined, predefinedHullName = undefined} = att;
-
-        if (hull === undefined) {
-            // Undefined hull will be assigned automatically to Wigley Hull
-            this.hull = this.getPredefinedHull(predefinedHullName);
-            return this.hull;
+    addHull(hull) {
+        // Sanity check: hull must be an object
+        if (typeof hull !== "object" || hull === null || Array.isArray(hull)) {
+            throw new Error("The 'hull' parameter must be an object.");
         }
 
-        if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft !== "number") {
+        if (hull.hasOwnProperty("design_draft") && typeof hull.design_draft === "number") {
             // Assign the design draft written in the hull object
-            design_draft = hull.design_draft;
+            const design_draft = hull.design_draft;
+            this.hull = new Hull(hull, design_draft);
+        } else {
+            this.hull = new Hull(hull);
         }
-
-        this.hull = new Hull(hull, design_draft);
 
         return this.hull;
+    }
+
+    setPredefinedHull(hullName = "wigleyHull") {
+        const predefinedHull = this.getPredefinedHull(hullName);
+        this.addHull(predefinedHull);
     }
 
     getPredefinedHull(hullName = "wigleyHull") {
@@ -36164,7 +36181,7 @@ class Ship {
         if (!["barge", "wigleyHull"].includes(hullName)) {
             throw new Error(`Predefined hullName = ${hullName} not defined in the list of predefined ships.`);
         }
-        return new Hull(PREDEFINED_HULLS[hullName]);
+        return PREDEFINED_HULLS[hullName];
     }
 
     initializeHydrostatics() {

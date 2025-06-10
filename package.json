@@ -5,7 +5,8 @@
     "main": "vessel3D.js",
     "scripts": {
         "build": "rollup -c utils/build/rollup.config.js --bundleConfigAsCjs",
-        "test": "jest"
+        "test": "jest",
+        "test-debug": "node --inspect-brk ./node_modules/jest/bin/jest.js --runInBand --no-cache"
     },
     "repository": {
         "type": "git",

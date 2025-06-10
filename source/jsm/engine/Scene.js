@@ -1,6 +1,3 @@
-// import { Scene } from "../../libs/three.js";
-// import { Camera } from "../../libs/three.js";
-
 import * as THREE from "../../libs/three.js";
 
 import {HullStability} from "../physics/Stability.js";
@@ -49,7 +46,6 @@ export class Scene extends THREE.Scene {
         // Try quaternion rotation in the future
         const draft_translation = this.vesselGroup.position.clone().z;
         const cg_position = this.shipCG;
-        // debugger;
 
         const pivot = new THREE.Vector3(cg_position.x, cg_position.y, cg_position.z + draft_translation);
         // console.log(pivot);
@@ -175,6 +171,9 @@ export class Scene extends THREE.Scene {
         const stability = new HullStability(ship);
 
         // Inserting ship in the position equals to 0
+        if(typeof stability.calculatedDraft === "nan" ) {
+            throw new Error("Not defined calculated draft")
+        }
         this.vesselGroup.position.z = -stability.calculatedDraft;
 
         this.shipCG = stability.weightsAndCenters.cg;
